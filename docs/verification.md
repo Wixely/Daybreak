@@ -8,13 +8,19 @@ Last verified: 2026-08-19
 
 - formatting verification;
 - Release build with zero warnings and zero errors;
-- 34 passing tests with no failures or skips;
+- 38 passing Daybreak tests with no failures or skips;
+- 669 passing vendored Nager.Date tests, with its network source-validation test skipped;
 - framework-dependent `linux-x64` publish;
 - framework-dependent `linux-arm64` publish;
 - local-only browser-asset validation for both Linux publishes;
 - complete NuGet license inventory restricted to MIT and Apache-2.0;
 - no known vulnerable packages from the configured NuGet sources;
 - no deprecated packages from the configured NuGet sources.
+
+The gate also confirmed that the locally modified Nager.Date project builds from
+the vendored source in Release configuration and is included in both Linux
+publishes as `Daybreak.Nager.Date.dll`. Holiday calculation does not require a
+runtime network service or license key.
 
 `./scripts/Migrate.ps1 -ConnectionString 'Data Source=MigrateOnly;Mode=Memory;Cache=Shared'` also completed successfully without starting the web server.
 

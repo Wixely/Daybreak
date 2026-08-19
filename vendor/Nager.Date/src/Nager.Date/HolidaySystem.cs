@@ -1,6 +1,5 @@
 using Nager.Date.Helpers;
 using Nager.Date.HolidayProviders;
-using Nager.Date.License;
 using Nager.Date.Models;
 using Nager.Date.ReligiousProviders;
 using System;
@@ -236,41 +235,6 @@ namespace Nager.Date
                 { CountryCode.ZW, new Lazy<IHolidayProvider>(() => new ZimbabweHolidayProvider(_catholicProvider))}
             };
 
-        private static LicenseStatus _licenseStatus = LicenseStatus.NotChecked;
-
-        /// <summary>
-        /// License Key
-        /// </summary>
-        /// <remarks>
-        /// As a GitHub sponsor of <see href="https://github.com/nager">nager</see>, you will receive a <see href="https://github.com/sponsors/nager">license key</see>
-        /// </remarks>
-        public static string? LicenseKey = null;
-
-        private static void CheckLicense(
-            string? licenseKey)
-        {
-            if (string.IsNullOrEmpty(licenseKey))
-            {
-                _licenseStatus = LicenseStatus.NotConfigured;
-                return;
-            }
-
-            var licenseInfo = LicenseHelper.CheckLicenseKey(licenseKey);
-            if (licenseInfo is null)
-            {
-                _licenseStatus = LicenseStatus.Invalid;
-                return;
-            }
-
-            if (licenseInfo.ValidUntil < DateTime.Today)
-            {
-                _licenseStatus = LicenseStatus.Expired;
-                return;
-            }
-
-            _licenseStatus = LicenseStatus.Valid;
-        }
-
         /// <summary>
         /// Get the holiday provider for the specified country
         /// </summary>
@@ -307,32 +271,10 @@ namespace Nager.Date
         /// <param name="countryCode"></param>
         /// <param name="holidayProvider"></param>
         /// <returns></returns>
-        /// <exception cref="LicenseKeyException">
-        /// Thrown when the license key is invalid, expired, or missing.
-        /// </exception>
         public static bool TryGetHolidayProvider(
             CountryCode countryCode,
             out IHolidayProvider holidayProvider)
         {
-            if (_licenseStatus == LicenseStatus.NotChecked)
-            {
-                CheckLicense(LicenseKey);
-            }
-
-            switch (_licenseStatus)
-            {
-                case LicenseStatus.Valid:
-                    break;
-                case LicenseStatus.NotConfigured:
-                    throw new LicenseKeyException("No LicenseKey");
-                case LicenseStatus.Invalid:
-                    throw new LicenseKeyException("Invalid LicenseKey");
-                case LicenseStatus.Expired:
-                    throw new LicenseKeyException("Expired LicenseKey");
-                default:
-                    throw new LicenseKeyException("Unknown LicenseKey Check Status");
-            }
-
             if (_holidaysProviders.TryGetValue(countryCode, out var provider))
             {
                 holidayProvider = provider.Value;

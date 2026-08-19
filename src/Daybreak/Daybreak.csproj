@@ -12,4 +12,8 @@
     <PackageReference Include="Microsoft.AspNetCore.App.Internal.Assets" Version="10.0.11" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.11" />
   </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../vendor/Nager.Date/src/Nager.Date/Nager.Date.csproj" />
+  </ItemGroup>
 </Project>

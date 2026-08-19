@@ -1,4 +1,5 @@
 <Solution>
   <Project Path="src/Daybreak/Daybreak.csproj" />
   <Project Path="tests/Daybreak.Tests/Daybreak.Tests.csproj" />
+  <Project Path="vendor/Nager.Date/src/Nager.Date/Nager.Date.csproj" />
 </Solution>

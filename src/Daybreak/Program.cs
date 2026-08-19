@@ -53,13 +53,6 @@ builder.Services.AddRateLimiter(options =>
     });
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
-builder.Services.AddHttpClient("NagerDate", client =>
-{
-    client.BaseAddress = new Uri("https://date.nager.at/");
-    client.Timeout = TimeSpan.FromSeconds(10);
-    client.DefaultRequestHeaders.UserAgent.ParseAdd("Daybreak/1.0");
-});
-
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<AdminPasswordValidator>();
 builder.Services.AddSingleton<BoardChangeNotifier>();

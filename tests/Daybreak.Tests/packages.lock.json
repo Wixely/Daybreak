@@ -460,8 +460,12 @@
         "type": "Project",
         "dependencies": {
           "Dapper": "[2.1.79, )",
+          "Daybreak.Nager.Date": "[2.0.0, )",
           "Microsoft.Data.Sqlite": "[10.0.11, )"
         }
+      },
+      "Daybreak.Nager.Date": {
+        "type": "Project"
       }
     }
   }

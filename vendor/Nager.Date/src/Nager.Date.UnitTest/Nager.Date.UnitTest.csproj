@@ -6,6 +6,9 @@
     <IsPackable>false</IsPackable>
 
     <AssemblyName>Nager.Date.UnitTest</AssemblyName>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <!-- Upstream tests predate Daybreak's repository-wide nullable warning policy. -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
   </PropertyGroup>
 
   <ItemGroup>

@@ -59,6 +59,9 @@
         "dependencies": {
           "SQLitePCLRaw.core": "2.1.12"
         }
+      },
+      "Daybreak.Nager.Date": {
+        "type": "Project"
       }
     },
     "net10.0/linux-arm64": {

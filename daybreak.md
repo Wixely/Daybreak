@@ -134,12 +134,12 @@ Urgent items use a strong red treatment and may pulse. The animation must be res
 
 ### Holidays
 
-- Nager.Date is the initial source of country and first-level subdivision holiday data.
-- Daybreak accesses holiday data through its own `IHolidayProvider` boundary so a local fork or another provider can replace it later.
-- Retrieved holiday data is cached locally so normal dashboard operation does not depend on continuous internet access.
-- The selected country, optional subdivision, refresh action, and cache status are visible in administration.
-- The MVP consumes Nager.Date's public-holiday feed as supplied; holiday-type filtering is deferred until provider requirements are confirmed.
-- Holiday data can be refreshed for future years without changing already completed historical occurrences.
+- Vendored Nager.Date source is the initial provider of country and first-level subdivision holiday data.
+- Daybreak accesses it through `IHolidayProvider`, allowing another local provider to replace it later.
+- Holidays are calculated in process. Daybreak has no holiday API, license-key, or runtime network dependency.
+- The selected country, optional subdivision, and bundled provider version are visible in administration.
+- The MVP consumes Nager.Date's public-holiday calculations as supplied; holiday-type filtering is deferred until provider requirements are confirmed.
+- Updating the vendored provider must not change already completed historical occurrences.
 - Activity policies support keeping, suppressing, moving earlier, or moving later when an occurrence falls on a selected holiday.
 - Holiday suppression means no occurrence is generated; it is distinct from the removed user-facing skip state.
 - Adjusted occurrences retain both their nominal and effective dates so the dashboard and history can explain a move.
@@ -155,7 +155,7 @@ The responsive administration interface includes:
 - schedule preview;
 - household time zone;
 - global midnight bleed window;
-- holiday country, subdivision, explicit refresh, and cache status;
+- holiday country, subdivision, and bundled provider status;
 - history and analytics;
 - archived activities;
 - application version and health information.
@@ -229,7 +229,7 @@ Daybreak is developed on Windows and published only as Linux Docker images. Nati
 - `OneOffTask`: standalone scheduled definition plus future source metadata.
 - `Occurrence`: nominal/effective date, deadline, action-window end, state, completion instant, nullable completing actor, and concurrency version.
 - `OccurrenceEvent`: append-only completion, undo, expiry, and administrative correction audit records.
-- `HolidayCache`: provider, country, subdivision, year, fetched time, and serialized/normalized holiday records.
+- `IHolidayProvider`: a process-local boundary over vendored holiday calculation source.
 
 Exact tables are to be fixed in an architecture decision record before the first migration is committed.
 

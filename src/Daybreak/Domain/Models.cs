@@ -43,11 +43,6 @@ public sealed record HouseholdSettings(
     public HouseholdSettings() : this(0, string.Empty, 0, null, null, 0) { }
 }
 
-public sealed record HolidayCacheStatus(int CachedYears, string? LastFetchedAtUtc)
-{
-    public HolidayCacheStatus() : this(0, null) { }
-}
-
 public sealed record Activity(
     string Id,
     string Title,

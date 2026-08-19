@@ -98,15 +98,6 @@ public static class SchemaManifest
 
             CREATE INDEX IX_OccurrenceEvents_OccurrenceId ON OccurrenceEvents (OccurrenceId, Id);
 
-            CREATE TABLE HolidayCache (
-                Provider TEXT NOT NULL,
-                CountryCode TEXT NOT NULL,
-                SubdivisionCode TEXT NOT NULL DEFAULT '',
-                Year INTEGER NOT NULL,
-                FetchedAtUtc TEXT NOT NULL,
-                Payload TEXT NOT NULL,
-                PRIMARY KEY (Provider, CountryCode, SubdivisionCode, Year)
-            );
             """),
     ];
 }

@@ -3,21 +3,10 @@
   "configurations": [
     {
       "name": "Daybreak (Blazor Server)",
-      "type": "coreclr",
+      "type": "dotnet",
       "request": "launch",
       "preLaunchTask": "Daybreak: build",
-      "program": "${workspaceFolder}/src/Daybreak/bin/Debug/net10.0/Daybreak.dll",
-      "cwd": "${workspaceFolder}/src/Daybreak",
-      "stopAtEntry": false,
-      "env": {
-        "ASPNETCORE_ENVIRONMENT": "Development",
-        "ASPNETCORE_URLS": "http://localhost:5180",
-        "DAYBREAK_ADMIN_PASSWORD": "daybreak-dev"
-      },
-      "serverReadyAction": {
-        "action": "openExternally",
-        "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
-      }
+      "projectPath": "${workspaceFolder}/src/Daybreak/Daybreak.csproj"
     }
   ]
 }

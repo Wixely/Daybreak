@@ -5,11 +5,13 @@ WORKDIR /source
 COPY Directory.Build.props global.json Daybreak.slnx ./
 COPY src/Daybreak/Daybreak.csproj src/Daybreak/
 COPY src/Daybreak/packages.lock.json src/Daybreak/
+COPY vendor/Nager.Date/src/Nager.Date/Nager.Date.csproj vendor/Nager.Date/src/Nager.Date/
 # Re-evaluate the lock inside the pinned Linux SDK because .NET 10 otherwise
 # derives the internal Blazor asset package from the host SDK patch.
 RUN dotnet restore src/Daybreak/Daybreak.csproj --force-evaluate
 
 COPY src/Daybreak/ src/Daybreak/
+COPY vendor/Nager.Date/src/Nager.Date/ vendor/Nager.Date/src/Nager.Date/
 RUN dotnet publish src/Daybreak/Daybreak.csproj \
     --configuration Release \
     --no-restore \

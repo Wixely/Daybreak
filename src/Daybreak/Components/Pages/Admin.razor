@@ -293,17 +293,9 @@ else if (_tab == SettingsTab)
                 <div class="field"><label for="subdivision">Holiday subdivision</label><InputText id="subdivision" @bind-Value="_settings.SubdivisionCode" placeholder="GB-ENG" /></div>
             </div>
             <div class="cache-status">
-                <span>Holiday cache</span>
-                @if (_holidayCache.CachedYears == 0)
-                {
-                    <strong>Not populated yet</strong>
-                    <small>Data is fetched when an active schedule uses a holiday adjustment.</small>
-                }
-                else
-                {
-                    <strong>@_holidayCache.CachedYears year(s) cached</strong>
-                    <small>Last refreshed @DateTimeOffset.Parse(_holidayCache.LastFetchedAtUtc!).ToString("d MMM yyyy, HH:mm 'UTC'")</small>
-                }
+                <span>Holiday engine</span>
+                <strong>Bundled Nager.Date v2.44.0</strong>
+                <small>Holiday dates are calculated locally without a network service.</small>
             </div>
             <div class="system-status">
                 <div><span>Application</span><strong>Daybreak @ApplicationVersion</strong></div>
@@ -312,7 +304,6 @@ else if (_tab == SettingsTab)
             </div>
             <div class="form-actions">
                 <button class="button button-primary" type="submit" disabled="@_saving">Save settings</button>
-                <button class="button button-secondary" type="button" disabled="@_saving" @onclick="RefreshHolidaysAsync">Refresh holidays</button>
             </div>
         </EditForm>
     </section>
@@ -439,7 +430,6 @@ else
     private OneOffForm _oneOff = new();
     private SettingsForm _settings = new();
     private HistorySnapshot _history = new(0, 0, 0, 0, 0, [], [], [], [], []);
-    private HolidayCacheStatus _holidayCache = new();
     private string _tab = "activities";
     private bool _loading = true;
     private bool _saving;
@@ -474,7 +464,6 @@ else
             _oneOff = OneOffForm.Create(HouseholdToday);
         }
         _history = await History.GetAsync();
-        _holidayCache = await Settings.GetHolidayCacheStatusAsync();
         _loading = false;
     }
 
@@ -582,31 +571,7 @@ else
     {
         await Settings.UpdateAsync(_settings.TimeZoneId, _settings.DefaultBleedMinutes, _settings.CountryCode, _settings.SubdivisionCode);
         await Generator.EnsureRollingHorizonAsync();
-        _holidayCache = await Settings.GetHolidayCacheStatusAsync();
     }, "Household settings saved.");
-
-    private async Task RefreshHolidaysAsync() => await RunSaveAsync(async () =>
-    {
-        var savedSettings = await Settings.GetAsync();
-        if (string.IsNullOrWhiteSpace(savedSettings.HolidayCountryCode))
-        {
-            throw new InvalidOperationException("Set and save a holiday country code before refreshing.");
-        }
-
-        var year = LocalTimeResolver.Today(
-            Clock,
-            TimeZoneInfo.FindSystemTimeZoneById(savedSettings.TimeZoneId)).Year;
-        await HolidayProvider.RefreshHolidayDatesAsync(
-            year,
-            savedSettings.HolidayCountryCode,
-            savedSettings.HolidaySubdivisionCode);
-        await HolidayProvider.RefreshHolidayDatesAsync(
-            year + 1,
-            savedSettings.HolidayCountryCode,
-            savedSettings.HolidaySubdivisionCode);
-        await Generator.EnsureRollingHorizonAsync();
-        _holidayCache = await Settings.GetHolidayCacheStatusAsync();
-    }, "Holiday data refreshed for this year and next year.");
 
     private async Task RunSaveAsync(Func<Task> operation, string success)
     {
@@ -664,7 +629,6 @@ else
                         _settings.CountryCode,
                         _settings.SubdivisionCode));
                 }
-                _holidayCache = await Settings.GetHolidayCacheStatusAsync();
             }
 
             var adjusted = nominalDates.Select(nominal => new

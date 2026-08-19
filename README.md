@@ -13,7 +13,7 @@ Daybreak is a self-hosted household dashboard for recurring activities and one-o
 - Keeps near-midnight work available during a configurable bleed window.
 - Expires unfinished occurrences into history instead of creating a backlog.
 - Synchronizes completion, undo, expiry, rollover, and configuration changes across open browser sessions.
-- Adjusts schedules around Nager.Date holidays using a locally cached, replaceable provider.
+- Adjusts schedules around holidays calculated by a vendored, fully offline Nager.Date provider.
 - Reports completion rate, on-time/late/unfinished results, weekly trends, and per-activity summaries.
 - Protects configuration with one Docker-image password while leaving the dashboard URL open.
 
@@ -110,7 +110,7 @@ VS Code includes a `Daybreak (Blazor Server)` debug profile plus default build a
 - Project-owned schema manifest and ordered migrations
 - Server-authoritative board snapshots and in-process revision broadcasts
 - Version-checked, idempotent occurrence transitions
-- Locally cached Nager.Date holiday adapter behind `IHolidayProvider`
+- Vendored Nager.Date v2.44.0 source behind `IHolidayProvider`, with no holiday API or runtime network dependency
 - One household and one server process per deployment
 
 The server materializes a rolling occurrence horizon. Each occurrence retains nominal and effective dates, deadline and action-window instants, completion state, a concurrency version, and a future-ready nullable actor. Connected dashboards receive a revision notification and then fetch the authoritative snapshot; they do not reconstruct state from events. Disconnected dashboards visibly block actions until Blazor reconnects.
@@ -133,7 +133,7 @@ Architecture decisions:
 - Changing the configured password invalidates existing administrator sessions.
 - Activity titles and history stay in the self-hosted SQLite database.
 - No telemetry, email, web push, browser notification, or mandatory cloud account is used.
-- Nager.Date is contacted only when holiday adjustment is configured; cached data is used when refresh fails.
+- Holiday dates are calculated locally from the vendored Nager.Date source; Daybreak does not contact a holiday API.
 
 Report security concerns privately to the repository owner rather than opening a public issue containing sensitive details.
 

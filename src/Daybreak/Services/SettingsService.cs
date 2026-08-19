@@ -12,15 +12,6 @@ public sealed class SettingsService(DatabaseConnectionFactory connections, Board
         return await connection.QuerySingleAsync<HouseholdSettings>("SELECT * FROM HouseholdSettings WHERE Id = 1");
     }
 
-    public async Task<HolidayCacheStatus> GetHolidayCacheStatusAsync()
-    {
-        await using var connection = await connections.OpenAsync();
-        return await connection.QuerySingleAsync<HolidayCacheStatus>("""
-            SELECT COUNT(*) AS CachedYears, MAX(FetchedAtUtc) AS LastFetchedAtUtc
-            FROM HolidayCache;
-            """);
-    }
-
     public async Task UpdateAsync(string timeZoneId, int defaultBleedMinutes, string? countryCode, string? subdivisionCode)
     {
         _ = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
