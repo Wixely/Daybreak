@@ -53,7 +53,7 @@ Daybreak is deliberately not a general project-management system. Its primary qu
 - Incomplete, completed, due-soon, overdue, and carried-from-yesterday states have distinct colour-independent treatments.
 - The completed section starts at the bottom of the first screen, or after overflowing pending content. Its cards are 75% transparent until the section is scrolled into view.
 - Completed cards fade back to 75% transparency when the dashboard returns to the top. After one minute without scrolling, tapping, keyboard, wheel, or touch input, the dashboard returns to the top automatically.
-- Cards use restrained movement transitions between pending and completed presentation, respect reduced-motion preferences, and retain a bounded width instead of stretching to fill a sparse row.
+- Cards use restrained entry and exit transitions between pending and completed presentation, including when a different open dashboard initiated the change. Transitions respect reduced-motion preferences, and cards retain a bounded width instead of stretching to fill a sparse row.
 - The compact dashboard header places the Daybreak configuration link at the top right. The date begins immediately below it without a redundant “Today” label, and reduced page gutters preserve room for more cards.
 - The summary beneath the date is the live household-local clock. During a pending deadline card’s final hour, a full countdown disc is progressively cut away clockwise and is empty at the deadline.
 - Page headings and containers must not use `tabindex="-1"`. Pages that need initial focus should place it on an appropriate input, as the login page does.

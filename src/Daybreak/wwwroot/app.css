@@ -276,6 +276,18 @@ h1 {
         urgent-attention-flash 60s ease-in-out 360ms infinite;
 }
 
+.activity-card.exiting-card {
+    pointer-events: none;
+}
+
+.pending-activities .activity-card.exiting-to-completed {
+    animation: card-exit-to-completed 420ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+.completed-activities .activity-card.exiting-to-pending {
+    animation: card-exit-to-pending 420ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
 .activity-action {
     width: 100%;
     min-height: 245px;
@@ -1114,6 +1126,14 @@ td small {
 @keyframes completed-card-arrive {
     from { transform: translateY(-1.5rem) scale(0.98); }
     to { transform: translateY(0) scale(1); }
+}
+
+@keyframes card-exit-to-completed {
+    to { opacity: 0; transform: translateY(1.5rem) scale(0.97); }
+}
+
+@keyframes card-exit-to-pending {
+    to { opacity: 0; transform: translateY(-1.5rem) scale(0.97); }
 }
 
 @keyframes loading {

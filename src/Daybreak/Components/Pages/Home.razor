@@ -38,7 +38,7 @@ else if (_snapshot is null)
         <span></span><span></span><span></span>
     </section>
 }
-else if (_snapshot.Items.Count == 0)
+else if (_snapshot.Items.Count == 0 && !_exitingItems.Any(item => item.Item.State == OccurrenceState.Pending))
 {
     <section class="empty-state">
         <p class="eyebrow">All clear</p>
@@ -50,34 +50,52 @@ else if (_snapshot.Items.Count == 0)
 else
 {
     <section class="activity-grid pending-activities" aria-label="Activities to do" aria-busy="@_refreshing">
-        @foreach (var item in _snapshot.Items.Where(item => item.State == OccurrenceState.Pending))
+        @foreach (var card in CardsFor(OccurrenceState.Pending))
         {
+            var item = card.Item;
             var now = Clock.GetUtcNow();
             var busy = _working.Contains(item.Id);
-            <article class="@CardClass(item, now)" @key="item.Id">
-                <button class="activity-action" disabled="@busy" @onclick="() => CompleteAsync(item)"
-                        aria-label="Mark @item.Title complete">
-                    <CardContents Item="item" Today="_snapshot.Today" Now="now" TimeZoneId="@_snapshot.TimeZoneId" />
-                </button>
+            <article class="@PresentedCardClass(card, now)"
+                     aria-hidden="@(card.IsExiting ? "true" : null)" @key="card.Key">
+                @if (card.IsExiting)
+                {
+                    <div class="activity-action">
+                        <CardContents Item="item" Today="_snapshot.Today" Now="now" TimeZoneId="@_snapshot.TimeZoneId" />
+                    </div>
+                }
+                else
+                {
+                    <button class="activity-action" disabled="@busy" @onclick="() => CompleteAsync(item)"
+                            aria-label="Mark @item.Title complete">
+                        <CardContents Item="item" Today="_snapshot.Today" Now="now" TimeZoneId="@_snapshot.TimeZoneId" />
+                    </button>
+                }
             </article>
         }
     </section>
 }
 </div>
 
-@if (_error is null && _snapshot is not null && _snapshot.Items.Any(item => item.State == OccurrenceState.Completed))
+@if (_error is null && _snapshot is not null &&
+    (_snapshot.Items.Any(item => item.State == OccurrenceState.Completed) ||
+     _exitingItems.Any(item => item.Item.State == OccurrenceState.Completed)))
 {
     <section class="completed-activities" aria-label="Completed activities" @ref="_completedSection">
         <div class="activity-grid">
-            @foreach (var item in _snapshot.Items.Where(item => item.State == OccurrenceState.Completed))
+            @foreach (var card in CardsFor(OccurrenceState.Completed))
             {
+                var item = card.Item;
                 var now = Clock.GetUtcNow();
                 var busy = _working.Contains(item.Id);
-                <article class="@CardClass(item, now)" @key="item.Id">
+                <article class="@PresentedCardClass(card, now)"
+                         aria-hidden="@(card.IsExiting ? "true" : null)" @key="card.Key">
                     <div class="activity-action completed-content">
                         <CardContents Item="item" Today="_snapshot.Today" Now="now" TimeZoneId="@_snapshot.TimeZoneId" />
                     </div>
-                    <button class="undo-button" disabled="@busy" @onclick="() => UndoAsync(item)">Undo</button>
+                    @if (!card.IsExiting)
+                    {
+                        <button class="undo-button" disabled="@busy" @onclick="() => UndoAsync(item)">Undo</button>
+                    }
                 </article>
             }
         </div>
@@ -86,6 +104,7 @@ else
 
 @code {
     private readonly HashSet<string> _working = [];
+    private readonly List<ExitingCard> _exitingItems = [];
     private readonly CancellationTokenSource _disposeToken = new();
     private BoardSnapshot? _snapshot;
     private string? _error;
@@ -96,6 +115,7 @@ else
     private IJSObjectReference? _dashboardModule;
     private string? _observedCompletedItems;
     private bool _dashboardBehaviorStarted;
+    private long _transitionSequence;
 
     private DateTimeOffset CurrentLocalTime => _snapshot is null
         ? Clock.GetUtcNow()
@@ -146,7 +166,9 @@ else
         {
             do
             {
-                _snapshot = await Board.GetSnapshotAsync(_disposeToken.Token);
+                var nextSnapshot = await Board.GetSnapshotAsync(_disposeToken.Token);
+                CaptureOutgoingCards(_snapshot, nextSnapshot);
+                _snapshot = nextSnapshot;
                 _error = null;
             }
             while (_snapshot.Revision < _requestedRevision);
@@ -224,6 +246,50 @@ else
         }
     }
 
+    private void CaptureOutgoingCards(BoardSnapshot? previous, BoardSnapshot current)
+    {
+        if (previous is null)
+        {
+            return;
+        }
+
+        var currentItems = current.Items.ToDictionary(item => item.Id, StringComparer.Ordinal);
+        var outgoing = previous.Items
+            .Where(item => !currentItems.TryGetValue(item.Id, out var replacement) || replacement.State != item.State)
+            .ToList();
+        if (outgoing.Count == 0)
+        {
+            return;
+        }
+
+        var keys = new List<string>(outgoing.Count);
+        foreach (var item in outgoing)
+        {
+            _exitingItems.RemoveAll(existing => existing.Item.Id == item.Id && existing.Item.State == item.State);
+            var key = $"{item.Id}-exit-{++_transitionSequence}";
+            _exitingItems.Add(new ExitingCard(item, key));
+            keys.Add(key);
+        }
+
+        _ = RemoveExitingCardsAsync(keys);
+    }
+
+    private async Task RemoveExitingCardsAsync(IReadOnlyCollection<string> keys)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(420), _disposeToken.Token);
+            await InvokeAsync(() =>
+            {
+                _exitingItems.RemoveAll(item => keys.Contains(item.Key, StringComparer.Ordinal));
+                StateHasChanged();
+            });
+        }
+        catch (OperationCanceledException) when (_disposeToken.IsCancellationRequested)
+        {
+        }
+    }
+
     private static string CardClass(BoardItem item, DateTimeOffset now)
     {
         var classes = new List<string> { "activity-card" };
@@ -246,6 +312,40 @@ else
 
         return string.Join(' ', classes);
     }
+
+    private IEnumerable<PresentedCard> CardsFor(OccurrenceState state)
+    {
+        if (_snapshot is null)
+        {
+            return [];
+        }
+
+        var now = Clock.GetUtcNow();
+        return _snapshot.Items
+            .Where(item => item.State == state)
+            .Select(item => new PresentedCard(item, item.Id, false))
+            .Concat(_exitingItems
+                .Where(item => item.Item.State == state)
+                .Select(item => new PresentedCard(item.Item, item.Key, true)))
+            .OrderBy(card => PresentationBucket(card.Item, now))
+            .ThenBy(card => card.Item.Deadline ?? DateTimeOffset.MaxValue)
+            .ThenBy(card => card.Item.Title, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static int PresentationBucket(BoardItem item, DateTimeOffset now) => item.State switch
+    {
+        OccurrenceState.Pending when item.IsOverdue(now) => 0,
+        OccurrenceState.Pending when item.Deadline is not null => 1,
+        OccurrenceState.Pending => 2,
+        _ => 3,
+    };
+
+    private static string PresentedCardClass(PresentedCard card, DateTimeOffset now) => card.IsExiting
+        ? $"{CardClass(card.Item, now)} exiting-card {(card.Item.State == OccurrenceState.Pending ? "exiting-to-completed" : "exiting-to-pending")}"
+        : CardClass(card.Item, now);
+
+    private sealed record ExitingCard(BoardItem Item, string Key);
+    private sealed record PresentedCard(BoardItem Item, string Key, bool IsExiting);
 
     public async ValueTask DisposeAsync()
     {
