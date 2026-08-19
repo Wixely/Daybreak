@@ -55,6 +55,7 @@ Daybreak is deliberately not a general project-management system. Its primary qu
 - Completed cards fade back to 75% transparency when the dashboard returns to the top. After one minute without scrolling, tapping, keyboard, wheel, or touch input, the dashboard returns to the top automatically.
 - Cards use restrained movement transitions between pending and completed presentation, respect reduced-motion preferences, and retain a bounded width instead of stretching to fill a sparse row.
 - The compact dashboard header places the Daybreak configuration link at the top right. The date begins immediately below it without a redundant “Today” label, and reduced page gutters preserve room for more cards.
+- The summary beneath the date is the live household-local clock. During a pending deadline card’s final hour, a full countdown disc is progressively cut away clockwise and is empty at the deadline.
 - Page headings and containers must not use `tabindex="-1"`. Pages that need initial focus should place it on an appropriate input, as the login page does.
 - Completed buttons show completion time. The MVP does not show a completing member.
 - Dashboard operation does not require a keyboard.
@@ -430,7 +431,7 @@ These do not block repository foundation or the first synchronized slice:
 - [x] Define the database manifest and initial ordered migration. — Owner: Codex — Completed: 2026-08-19
 - [x] Implement Milestone 1 as a synchronized vertical slice. — Owner: Codex — Completed: 2026-08-19
 - [x] Verify two subscribed dashboard clients converge on the same revision in integration tests. — Owner: Codex — Completed: 2026-08-19
-- [x] Verify formatting, the 39-test Release suite, Linux AMD64/ARM64 publishes, dependency licenses, vulnerabilities, and deprecations. — Owner: Codex — Completed: 2026-08-19
+- [x] Verify formatting, the 40-test Release suite, Linux AMD64/ARM64 publishes, dependency licenses, vulnerabilities, and deprecations. — Owner: Codex — Completed: 2026-08-19
 - [x] Build and run the production image with a Linux OCI runtime; verify fresh-volume ownership, non-root execution, direct-password login, persistence, backup, and restore. — Owner: Codex — Completed: 2026-08-19
 - [x] Build and run `docker compose up --build` on Docker Engine; verify the built-in image password, non-root process, health endpoint, and named-volume recreation. — Owner: Codex — Completed: 2026-08-19
 - [x] Verify login, completion, undo, and administration-to-dashboard synchronization in live browser sessions. — Owner: Codex — Completed: 2026-08-19

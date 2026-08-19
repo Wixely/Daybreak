@@ -57,6 +57,7 @@ public sealed partial class ApplicationSmokeTests
         StringAssert.Contains(dashboardHtml, "Daybreak");
         StringAssert.Contains(dashboardHtml, "Take vitamins");
         StringAssert.Contains(dashboardHtml, "dashboard-brand-link");
+        StringAssert.Contains(dashboardHtml, "dashboard-clock");
         Assert.IsFalse(dashboardHtml.Contains("<p class=\"eyebrow\">Today</p>", StringComparison.Ordinal));
         Assert.IsFalse(dashboardHtml.Contains("tabindex=\"-1\"", StringComparison.Ordinal));
         Assert.AreEqual(HttpStatusCode.OK, health.StatusCode);

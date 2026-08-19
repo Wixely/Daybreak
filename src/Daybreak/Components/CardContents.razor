@@ -1,4 +1,5 @@
 @using Daybreak.Domain
+@using System.Globalization
 
 <div class="activity-card-topline">
     <div class="status-badges">
@@ -29,7 +30,14 @@
     </div>
     @if (Item.Deadline is not null)
     {
-        <time datetime="@Item.Deadline.Value.ToString("O")">@FormatTime(Item.Deadline.Value)</time>
+        <div class="deadline-display">
+            @if (CountdownProgress is { } progress)
+            {
+                <span class="deadline-countdown" style="@CountdownStyle(progress)" role="img"
+                      aria-label="@CountdownLabel"></span>
+            }
+            <time datetime="@Item.Deadline.Value.ToString("O")">@FormatTime(Item.Deadline.Value)</time>
+        </div>
     }
 </div>
 <h2>@Item.Title</h2>
@@ -65,4 +73,26 @@
 
     private string FormatTime(DateTimeOffset instant) =>
         TimeZoneInfo.ConvertTime(instant, TimeZoneInfo.FindSystemTimeZoneById(TimeZoneId)).ToString("HH:mm");
+
+    private double? CountdownProgress => Item.State == OccurrenceState.Pending
+        ? DeadlineCountdown.Progress(Now, Item.Deadline)
+        : null;
+
+    private string CountdownLabel
+    {
+        get
+        {
+            var remaining = Item.Deadline!.Value - Now;
+            if (remaining <= TimeSpan.Zero)
+            {
+                return "Deadline reached";
+            }
+
+            var minutes = (int)Math.Ceiling(remaining.TotalMinutes);
+            return $"{minutes} minute{(minutes == 1 ? string.Empty : "s")} until deadline";
+        }
+    }
+
+    private static string CountdownStyle(double progress) =>
+        $"--countdown-progress: {(progress * 360).ToString("0.###", CultureInfo.InvariantCulture)}deg";
 }

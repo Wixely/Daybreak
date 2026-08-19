@@ -14,7 +14,9 @@
 <section class="dashboard-heading">
     <div>
         <h1>@(_snapshot?.Today.ToString("dddd, d MMMM") ?? "Loading…")</h1>
-        <p class="lede">@Summary</p>
+        <p class="lede dashboard-clock">
+            <time datetime="@CurrentLocalTime.ToString("O")">@CurrentLocalTime.ToString("HH:mm")</time>
+        </p>
     </div>
     <div class="connection-pill connected" role="status" title="Revision @(_snapshot?.Revision ?? 0)">
         <span aria-hidden="true"></span> Live
@@ -95,22 +97,9 @@ else
     private string? _observedCompletedItems;
     private bool _dashboardBehaviorStarted;
 
-    private string Summary
-    {
-        get
-        {
-            if (_snapshot is null)
-            {
-                return "Waking up the household board.";
-            }
-
-            var pending = _snapshot.Items.Count(item => item.State == OccurrenceState.Pending);
-            var completed = _snapshot.Items.Count - pending;
-            return pending == 0
-                ? $"Everything is complete · {completed} done"
-                : $"{pending} to do · {completed} done";
-        }
-    }
+    private DateTimeOffset CurrentLocalTime => _snapshot is null
+        ? Clock.GetUtcNow()
+        : TimeZoneInfo.ConvertTime(Clock.GetUtcNow(), TimeZoneInfo.FindSystemTimeZoneById(_snapshot.TimeZoneId));
 
     protected override async Task OnInitializedAsync()
     {

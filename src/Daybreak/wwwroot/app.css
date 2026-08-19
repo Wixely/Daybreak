@@ -171,6 +171,14 @@ h1 {
     font-size: clamp(1rem, 1.8vw, 1.22rem);
 }
 
+.dashboard-clock {
+    color: var(--sun-bright);
+    font-size: clamp(1.15rem, 2vw, 1.5rem);
+    font-variant-numeric: tabular-nums;
+    font-weight: 750;
+    letter-spacing: 0.04em;
+}
+
 .dashboard-heading,
 .page-heading {
     display: flex;
@@ -311,6 +319,34 @@ button.activity-action:active {
     color: var(--muted);
     font-size: 0.95rem;
     font-weight: 750;
+}
+
+.deadline-display {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.deadline-countdown {
+    --countdown-empty: rgba(255, 255, 255, 0.07);
+    --countdown-fill: var(--sun-bright);
+    display: inline-block;
+    flex: none;
+    width: 2rem;
+    aspect-ratio: 1;
+    border: 1px solid rgba(255, 212, 139, 0.42);
+    border-radius: 50%;
+    background: conic-gradient(
+        var(--countdown-empty) 0 var(--countdown-progress),
+        var(--countdown-fill) var(--countdown-progress) 360deg);
+    box-shadow: 0 0 0 3px rgba(255, 189, 91, 0.06);
+}
+
+.activity-card.urgent .deadline-countdown {
+    --countdown-fill: #ffadb5;
+    border-color: rgba(255, 173, 181, 0.65);
+    box-shadow: 0 0 0 3px rgba(255, 77, 94, 0.12);
 }
 
 .status-badge {

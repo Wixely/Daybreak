@@ -25,6 +25,18 @@ public sealed class BoardItemTests
         Assert.IsTrue(item.IsUrgent(deadline.AddMinutes(1)));
     }
 
+    [TestMethod]
+    public void DeadlineCountdownRunsFromFullToEmptyDuringFinalHour()
+    {
+        var deadline = new DateTimeOffset(2026, 8, 19, 12, 0, 0, TimeSpan.Zero);
+
+        Assert.IsNull(DeadlineCountdown.Progress(deadline.AddMinutes(-61), deadline));
+        Assert.AreEqual(0d, DeadlineCountdown.Progress(deadline.AddHours(-1), deadline));
+        Assert.AreEqual(0.5d, DeadlineCountdown.Progress(deadline.AddMinutes(-30), deadline));
+        Assert.AreEqual(1d, DeadlineCountdown.Progress(deadline, deadline));
+        Assert.AreEqual(1d, DeadlineCountdown.Progress(deadline.AddMinutes(10), deadline));
+    }
+
     private static BoardItem CreateItem(UrgencyMode urgencyMode, DateTimeOffset deadline) => new(
         "id",
         "Example",
