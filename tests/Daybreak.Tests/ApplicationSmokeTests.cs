@@ -79,6 +79,8 @@ public sealed partial class ApplicationSmokeTests
         Assert.AreEqual(HttpStatusCode.OK, behavior.StatusCode);
         StringAssert.Contains(behaviorScript, "IntersectionObserver");
         StringAssert.Contains(behaviorScript, "is-revealed");
+        StringAssert.Contains(behaviorScript, "scrollTo");
+        StringAssert.Contains(behaviorScript, "60_000");
     }
 
     [TestMethod]

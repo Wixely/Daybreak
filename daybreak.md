@@ -52,6 +52,8 @@ Daybreak is deliberately not a general project-management system. Its primary qu
 - Ordering within otherwise equal items is deterministic. User-controlled ordering may be added later.
 - Incomplete, completed, due-soon, overdue, and carried-from-yesterday states have distinct colour-independent treatments.
 - The completed section starts at the bottom of the first screen, or after overflowing pending content. Its cards are 75% transparent until the section is scrolled into view.
+- Completed cards fade back to 75% transparency when the dashboard returns to the top. After one minute without scrolling, tapping, keyboard, wheel, or touch input, the dashboard returns to the top automatically.
+- Cards use restrained movement transitions between pending and completed presentation, respect reduced-motion preferences, and retain a bounded width instead of stretching to fill a sparse row.
 - Completed buttons show completion time. The MVP does not show a completing member.
 - Dashboard operation does not require a keyboard.
 - No browser, push, email, or operating-system notifications are used. The live dashboard is the reminder surface.

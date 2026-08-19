@@ -48,12 +48,12 @@ else if (_snapshot.Items.Count == 0)
 }
 else
 {
-    <section class="activity-grid" aria-label="Activities to do" aria-busy="@_refreshing">
+    <section class="activity-grid pending-activities" aria-label="Activities to do" aria-busy="@_refreshing">
         @foreach (var item in _snapshot.Items.Where(item => item.State == OccurrenceState.Pending))
         {
             var now = Clock.GetUtcNow();
             var busy = _working.Contains(item.Id);
-            <article class="@CardClass(item, now)">
+            <article class="@CardClass(item, now)" @key="item.Id">
                 <button class="activity-action" disabled="@busy" @onclick="() => CompleteAsync(item)"
                         aria-label="Mark @item.Title complete">
                     <CardContents Item="item" Today="_snapshot.Today" Now="now" TimeZoneId="@_snapshot.TimeZoneId" />
@@ -72,7 +72,7 @@ else
             {
                 var now = Clock.GetUtcNow();
                 var busy = _working.Contains(item.Id);
-                <article class="@CardClass(item, now)">
+                <article class="@CardClass(item, now)" @key="item.Id">
                     <div class="activity-action completed-content">
                         <CardContents Item="item" Today="_snapshot.Today" Now="now" TimeZoneId="@_snapshot.TimeZoneId" />
                     </div>
@@ -93,7 +93,8 @@ else
     private Task? _clockTask;
     private ElementReference _completedSection;
     private IJSObjectReference? _dashboardModule;
-    private bool _completedSectionObserved;
+    private string? _observedCompletedItems;
+    private bool _dashboardBehaviorStarted;
 
     private string Summary
     {
@@ -121,19 +122,27 @@ else
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        var hasCompletedItems = _error is null &&
-            _snapshot?.Items.Any(item => item.State == OccurrenceState.Completed) == true;
-
-        if (hasCompletedItems && !_completedSectionObserved)
+        _dashboardModule ??= await JavaScript.InvokeAsync<IJSObjectReference>("import", "./dashboard.js");
+        if (!_dashboardBehaviorStarted)
         {
-            _dashboardModule ??= await JavaScript.InvokeAsync<IJSObjectReference>("import", "./dashboard.js");
-            await _dashboardModule.InvokeVoidAsync("observeCompletedSection", _completedSection);
-            _completedSectionObserved = true;
+            await _dashboardModule.InvokeVoidAsync("startIdleScroll", 60_000);
+            _dashboardBehaviorStarted = true;
         }
-        else if (!hasCompletedItems && _completedSectionObserved && _dashboardModule is not null)
+
+        var completedItems = _error is null
+            ? _snapshot?.Items.Where(item => item.State == OccurrenceState.Completed).ToList() ?? []
+            : [];
+        var completedSignature = string.Join('|', completedItems.Select(item => item.Id));
+
+        if (completedItems.Count > 0 && completedSignature != _observedCompletedItems)
+        {
+            await _dashboardModule.InvokeVoidAsync("observeCompletedSection", _completedSection);
+            _observedCompletedItems = completedSignature;
+        }
+        else if (completedItems.Count == 0 && _observedCompletedItems is not null)
         {
             await _dashboardModule.InvokeVoidAsync("disconnectCompletedSection");
-            _completedSectionObserved = false;
+            _observedCompletedItems = null;
         }
     }
 
@@ -263,7 +272,7 @@ else
         {
             try
             {
-                await _dashboardModule.InvokeVoidAsync("disconnectCompletedSection");
+                await _dashboardModule.InvokeVoidAsync("stopDashboardBehavior");
                 await _dashboardModule.DisposeAsync();
             }
             catch (JSDisconnectedException)
