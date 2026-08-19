@@ -66,32 +66,27 @@ a {
     width: min(1700px, 100%);
     min-height: 100vh;
     margin: 0 auto;
-    padding: 0 clamp(1rem, 3vw, 3rem) 3rem;
+    padding: 0 clamp(0.75rem, 1.5vw, 1.5rem) 1.5rem;
 }
 
 .kiosk-header {
-    min-height: 70px;
+    min-height: 56px;
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     border-bottom: 1px solid var(--line);
 }
 
-.configure-link {
-    display: grid;
-    width: 2.7rem;
-    height: 2.7rem;
-    place-items: center;
+.dashboard-brand-link {
+    padding: 0.35rem 0.65rem 0.35rem 0.4rem;
     border: 1px solid var(--line);
-    border-radius: 50%;
+    border-radius: 999px;
     background: var(--surface);
-    color: var(--muted);
-    text-decoration: none;
 }
 
-.configure-link:hover {
-    color: var(--ink);
+.dashboard-brand-link:hover {
     border-color: rgba(255, 189, 91, 0.35);
+    background: var(--surface-raised);
 }
 
 .site-header {
@@ -145,7 +140,7 @@ nav a:hover {
 }
 
 main {
-    padding-top: clamp(1.8rem, 4vw, 3.5rem);
+    padding-top: clamp(0.65rem, 1.25vw, 1.1rem);
 }
 
 h1,
@@ -182,11 +177,11 @@ h1 {
     align-items: flex-end;
     justify-content: space-between;
     gap: 2rem;
-    margin-bottom: clamp(2rem, 5vw, 3.5rem);
+    margin-bottom: clamp(1.25rem, 2.5vw, 2rem);
 }
 
 .dashboard-primary {
-    min-height: calc(100vh - 70px - clamp(1.8rem, 4vw, 3.5rem) - 3rem);
+    min-height: calc(100vh - 56px - clamp(0.65rem, 1.25vw, 1.1rem) - 1.5rem);
 }
 
 .connection-pill {
@@ -216,7 +211,7 @@ h1 {
 .activity-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 340px));
-    gap: clamp(0.85rem, 2vw, 1.35rem);
+    gap: clamp(0.65rem, 1vw, 1rem);
     justify-content: start;
 }
 
@@ -1088,7 +1083,7 @@ td small {
         min-height: 70px;
     }
 
-    .brand-mark {
+    .site-header .brand-mark {
         display: none;
     }
 

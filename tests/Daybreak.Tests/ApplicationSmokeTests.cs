@@ -56,6 +56,8 @@ public sealed partial class ApplicationSmokeTests
         var dashboardHtml = await dashboard.Content.ReadAsStringAsync();
         StringAssert.Contains(dashboardHtml, "Daybreak");
         StringAssert.Contains(dashboardHtml, "Take vitamins");
+        StringAssert.Contains(dashboardHtml, "dashboard-brand-link");
+        Assert.IsFalse(dashboardHtml.Contains("<p class=\"eyebrow\">Today</p>", StringComparison.Ordinal));
         Assert.AreEqual(HttpStatusCode.OK, health.StatusCode);
     }
 
