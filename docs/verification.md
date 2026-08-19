@@ -44,7 +44,7 @@ The Docker-specific exercise additionally proved:
 
 - `docker compose config --quiet` accepts `compose.yaml`;
 - `docker compose up --build --detach` builds and starts the service on Docker Engine;
-- the image-supplied `DAYBREAK_ADMIN_PASSWORD=daybreak` satisfies fail-fast password validation without setup;
+- the image-supplied administrator password satisfies fail-fast password validation without setup;
 - the nested Docker service reports healthy and runs `dotnet Daybreak.dll` as UID 1654;
 - `docker compose down` removes the container and network while preserving `daybreak-data`;
 - a following `docker compose up --no-build --detach` starts healthy and reuses the existing migrated database.
@@ -59,7 +59,7 @@ The responsive interface was exercised against a locally running Windows develop
 - two independent dashboard tabs started at revision 5;
 - completing an item in one tab advanced both tabs to revision 6 without refreshing;
 - undoing it in the other tab advanced both tabs to revision 7 without refreshing;
-- the built-in `daybreak` password opened the administration interface;
+- the built-in password opened the administration interface;
 - creating a dated one-off task in administration made it appear on the open dashboard at revision 9 without refreshing;
 - no new browser console errors occurred during the passing exercise.
 

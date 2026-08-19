@@ -36,7 +36,7 @@ The Compose file stores SQLite data in the named `daybreak-data` volume. Removin
 
 | Setting | Required | Default | Purpose |
 | --- | --- | --- | --- |
-| `DAYBREAK_ADMIN_PASSWORD` | No | `daybreak` in the Docker image | Administrator password. Override the image value at runtime if desired. |
+| `DAYBREAK_ADMIN_PASSWORD` | No | `admin` | Administrator password. Override the supplied value at runtime if desired. |
 | `ConnectionStrings__Daybreak` | No | `Data Source=/data/daybreak.db` | SQLite connection string. |
 | `Daybreak__SeedDemoData` | No | `false` | Seeds neutral demonstration activities into an empty database. |
 | `Daybreak__DataProtectionKeysPath` | No | `/data/keys` in Docker | Persists administrator cookie-signing keys across container restarts. |
@@ -74,7 +74,7 @@ Run locally with neutral demonstration data:
 ./scripts/Run.ps1
 ```
 
-The development administrator password defaults to `daybreak-dev` in the local script and committed VS Code launch profile. The Docker image intentionally uses the separate low-security default `daybreak`.
+The development script, VS Code launch profile, and Docker image all use the intentionally low-security administrator password `admin` by default.
 
 Build and test:
 
@@ -127,7 +127,7 @@ Architecture decisions:
 ## Security and privacy
 
 - The dashboard intentionally has no authentication in the MVP.
-- The Docker image intentionally includes the administrator password `daybreak`. This is a convenience control for a low-security household product, not a strong security boundary; change the Dockerfile value or override `DAYBREAK_ADMIN_PASSWORD` if desired.
+- Daybreak intentionally supplies the administrator password `admin`. This is a convenience control for a low-security household product, not a strong security boundary; change the committed defaults or override `DAYBREAK_ADMIN_PASSWORD` if desired.
 - Administration uses a rate-limited, antiforgery-protected login form and an HTTP-only, same-site cookie.
 - Password comparison is constant-time; the password itself is not stored in SQLite.
 - Changing the configured password invalidates existing administrator sessions.

@@ -34,7 +34,7 @@ Daybreak is deliberately not a general project-management system. Its primary qu
 - The MVP has one implicit household user and does not ask who completed an item.
 - Completion records retain a nullable actor field so named household members can be introduced later without replacing the occurrence model.
 - Administration pages require one deployment-configured password.
-- The Docker image supplies the intentionally low-security administrator password `daybreak` through `DAYBREAK_ADMIN_PASSWORD`; operators may change the Dockerfile value or override it at runtime.
+- The Docker image and development launch configuration supply the intentionally low-security administrator password `admin` through `DAYBREAK_ADMIN_PASSWORD`; operators may change the committed value or override it at runtime.
 - Successful administration login creates a secure, HTTP-only session cookie. Restarting with a changed password invalidates existing administration sessions.
 - Daybreak should document use behind HTTPS or a trusted reverse proxy when it is exposed beyond a trusted local network.
 

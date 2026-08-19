@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$AdminPassword = 'daybreak-dev',
+    [string]$AdminPassword = 'admin',
     [string]$Url = 'http://localhost:5180'
 )
 

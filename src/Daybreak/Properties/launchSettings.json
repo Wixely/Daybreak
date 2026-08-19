@@ -9,7 +9,7 @@
       "applicationUrl": "http://localhost:5180",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "DAYBREAK_ADMIN_PASSWORD": "daybreak-dev"
+        "DAYBREAK_ADMIN_PASSWORD": "admin"
       }
     }
   }
