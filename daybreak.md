@@ -55,6 +55,7 @@ Daybreak is deliberately not a general project-management system. Its primary qu
 - Completed cards fade back to 75% transparency when the dashboard returns to the top. After one minute without scrolling, tapping, keyboard, wheel, or touch input, the dashboard returns to the top automatically.
 - Cards use restrained movement transitions between pending and completed presentation, respect reduced-motion preferences, and retain a bounded width instead of stretching to fill a sparse row.
 - The compact dashboard header places the Daybreak configuration link at the top right. The date begins immediately below it without a redundant “Today” label, and reduced page gutters preserve room for more cards.
+- Page headings and containers must not use `tabindex="-1"`. Pages that need initial focus should place it on an appropriate input, as the login page does.
 - Completed buttons show completion time. The MVP does not show a completing member.
 - Dashboard operation does not require a keyboard.
 - No browser, push, email, or operating-system notifications are used. The live dashboard is the reminder surface.
