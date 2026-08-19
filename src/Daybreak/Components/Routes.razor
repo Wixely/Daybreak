@@ -1,0 +1,22 @@
+<CascadingAuthenticationState>
+    <Router AppAssembly="typeof(Program).Assembly">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(MainLayout)">
+                <NotAuthorized>
+                    <RedirectToLogin />
+                </NotAuthorized>
+            </AuthorizeRouteView>
+            <FocusOnNavigate RouteData="routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+            <PageTitle>Not found · Daybreak</PageTitle>
+            <LayoutView Layout="typeof(MainLayout)">
+                <section class="empty-state">
+                    <p class="eyebrow">404</p>
+                    <h1>That page has wandered off.</h1>
+                    <a class="button button-primary" href="/">Return to today</a>
+                </section>
+            </LayoutView>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>

@@ -1,0 +1,825 @@
+@page "/admin"
+@attribute [Authorize]
+@inject ActivityService Activities
+@inject OneOffTaskService OneOffTasks
+@inject SettingsService Settings
+@inject OccurrenceGenerator Generator
+@inject HistoryService History
+@inject TimeProvider Clock
+@inject IHolidayProvider HolidayProvider
+@using Daybreak.Data
+
+<PageTitle>Configure · Daybreak</PageTitle>
+
+<section class="page-heading">
+    <div>
+        <p class="eyebrow">Administration</p>
+        <h1>Configure Daybreak</h1>
+        <p class="lede">Activities, one-off tasks and household settings.</p>
+    </div>
+    <form method="post" action="/auth/logout">
+        <AntiforgeryToken />
+        <button class="button button-secondary" type="submit">Sign out</button>
+    </form>
+</section>
+
+@if (_message is not null)
+{
+    <div class="alert @(_messageIsError ? "alert-error" : "alert-success")" role="status">@_message</div>
+}
+
+<nav class="admin-tabs" aria-label="Configuration sections">
+    <button class="@TabClass(ActivitiesTab)" @onclick="ShowActivities">Activities</button>
+    <button class="@TabClass(OneOffsTab)" @onclick="ShowOneOffs">One-off tasks</button>
+    <button class="@TabClass(SettingsTab)" @onclick="ShowSettings">Settings</button>
+    <button class="@TabClass(HistoryTab)" @onclick="ShowHistory">History</button>
+</nav>
+
+@if (_loading)
+{
+    <section class="loading-state" aria-label="Loading configuration"><span></span><span></span><span></span></section>
+}
+else if (_tab == "activities")
+{
+    <div class="admin-grid">
+        <section class="panel">
+            <div class="panel-heading">
+                <div>
+                    <p class="eyebrow">Recurring</p>
+                    <h2>Activities</h2>
+                </div>
+                <div class="panel-actions">
+                    <button class="button button-secondary" @onclick="ToggleArchivedAsync">@(_showArchived ? "Hide archived" : "Show archived")</button>
+                    <button class="button button-secondary" @onclick="NewActivity">New</button>
+                </div>
+            </div>
+            @if (_activities.Count == 0)
+            {
+                <p class="muted">No recurring activities yet.</p>
+            }
+            else
+            {
+                <div class="item-list">
+                    @foreach (var activity in _activities)
+                    {
+                        <button class="list-item @(_activity.Id == activity.Id ? "selected" : null)" @onclick="() => EditActivity(activity)">
+                            <span>
+                                <strong>@activity.Title</strong>
+                                <small>@ScheduleSummary(activity)</small>
+                            </span>
+                            <span class="list-status">@(activity.ArchivedAtUtc is not null ? "Archived" : activity.IsPaused ? "Paused" : "Active")</span>
+                        </button>
+                    }
+                </div>
+            }
+        </section>
+
+        <section class="panel editor-panel">
+            <p class="eyebrow">@(_activity.Id is null ? "New activity" : "Edit activity")</p>
+            <h2>@(_activity.Id is null ? "Add a routine" : _activity.Title)</h2>
+            <EditForm Model="_activity" OnValidSubmit="SaveActivityAsync" FormName="activity-editor">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+                <div class="form-grid">
+                    <div class="field span-2">
+                        <label for="activity-title">Title</label>
+                        <InputText id="activity-title" @bind-Value="_activity.Title" />
+                    </div>
+                    <div class="field span-2">
+                        <label for="activity-notes">Notes</label>
+                        <InputTextArea id="activity-notes" @bind-Value="_activity.Notes" />
+                    </div>
+                    <div class="field">
+                        <label for="recurrence">Recurrence</label>
+                        <InputSelect id="recurrence" @bind-Value="_activity.RecurrenceKind">
+                            @foreach (var kind in Enum.GetValues<RecurrenceKind>())
+                            {
+                                <option value="@kind">@RecurrenceLabel(kind)</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    @if (_activity.RecurrenceKind is RecurrenceKind.EveryNDays or RecurrenceKind.EveryNWeeks)
+                    {
+                        <div class="field">
+                            <label for="interval">Repeat every</label>
+                            <InputNumber id="interval" @bind-Value="_activity.Interval" />
+                        </div>
+                    }
+                    @if (_activity.RecurrenceKind is RecurrenceKind.SelectedWeekdays or RecurrenceKind.EveryNWeeks)
+                    {
+                        <fieldset class="field span-2 weekday-picker">
+                            <legend>Days of the week</legend>
+                            @foreach (var day in Enum.GetValues<DayOfWeek>())
+                            {
+                                <label>
+                                    <input type="checkbox" checked="@IsDaySelected(day)" @onchange="() => ToggleDay(day)" />
+                                    <span>@day.ToString()[..2]</span>
+                                </label>
+                            }
+                        </fieldset>
+                    }
+                    @if (_activity.RecurrenceKind == RecurrenceKind.MonthlyDate)
+                    {
+                        <div class="field">
+                            <label for="month-date">Day of month</label>
+                            <InputNumber id="month-date" @bind-Value="_activity.DayOfMonth" />
+                        </div>
+                    }
+                    @if (_activity.RecurrenceKind == RecurrenceKind.MonthlyOrdinalWeekday)
+                    {
+                        <div class="field">
+                            <label for="ordinal">Occurrence</label>
+                            <InputSelect id="ordinal" @bind-Value="_activity.Ordinal">
+                                <option value="1">First</option><option value="2">Second</option>
+                                <option value="3">Third</option><option value="4">Fourth</option>
+                                <option value="5">Last</option>
+                            </InputSelect>
+                        </div>
+                        <div class="field">
+                            <label for="weekday">Weekday</label>
+                            <InputSelect id="weekday" @bind-Value="_activity.Weekday">
+                                @foreach (var day in Enum.GetValues<DayOfWeek>())
+                                {
+                                    <option value="@((int)day)">@day</option>
+                                }
+                            </InputSelect>
+                        </div>
+                    }
+                    <div class="field">
+                        <label for="start-date">Starts</label>
+                        <input id="start-date" type="date" value="@_activity.StartDate" @onchange="SetActivityStartDate" />
+                    </div>
+                    <div class="field">
+                        <label for="end-date">Ends (optional)</label>
+                        <input id="end-date" type="date" value="@_activity.EndDate" @onchange="SetActivityEndDate" />
+                    </div>
+                    <div class="field">
+                        <label for="deadline">Deadline (optional)</label>
+                        <input id="deadline" type="time" value="@_activity.DeadlineTime" @onchange="SetActivityDeadline" />
+                    </div>
+                    <div class="field">
+                        <label for="urgency">Urgency</label>
+                        <InputSelect id="urgency" @bind-Value="_activity.UrgencyMode">
+                            <option value="@UrgencyMode.None">Never urgent</option>
+                            <option value="@UrgencyMode.AfterDeadline">After deadline</option>
+                            <option value="@UrgencyMode.BeforeAndAfterDeadline">Before and after deadline</option>
+                        </InputSelect>
+                    </div>
+                    @if (_activity.UrgencyMode == UrgencyMode.BeforeAndAfterDeadline)
+                    {
+                        <div class="field">
+                            <label for="warning">Warning minutes</label>
+                            <InputNumber id="warning" @bind-Value="_activity.WarningMinutes" />
+                        </div>
+                    }
+                    <div class="field">
+                        <label for="bleed">Bleed override in minutes</label>
+                        <InputNumber id="bleed" @bind-Value="_activity.BleedOverrideMinutes" placeholder="Use global" />
+                    </div>
+                    <div class="field">
+                        <label for="holiday-policy">On a holiday</label>
+                        <InputSelect id="holiday-policy" @bind-Value="_activity.HolidayPolicy">
+                            @foreach (var policy in Enum.GetValues<HolidayPolicy>())
+                            {
+                                <option value="@policy">@HolidayLabel(policy)</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <label class="toggle-field span-2">
+                        <InputCheckbox @bind-Value="_activity.IsPaused" />
+                        <span>Pause this activity</span>
+                    </label>
+                </div>
+                <div class="schedule-preview">
+                    <span>Next dates</span>
+                    <strong>@PreviewDates()</strong>
+                    <small>@_adjustedPreview</small>
+                    <button class="preview-button" type="button" @onclick="PreviewAdjustedDatesAsync">Preview holiday adjustments</button>
+                </div>
+                <div class="form-actions">
+                    <button class="button button-primary" type="submit" disabled="@(_saving || _activity.ArchivedAtUtc is not null)">Save activity</button>
+                    @if (_activity.ArchivedAtUtc is not null)
+                    {
+                        <button class="button button-secondary" type="button" @onclick="RestoreActivityAsync">Restore</button>
+                    }
+                    else if (_activity.Id is not null)
+                    {
+                        <button class="button button-danger" type="button" @onclick="ArchiveActivityAsync">Archive</button>
+                    }
+                </div>
+            </EditForm>
+        </section>
+    </div>
+}
+else if (_tab == "one-offs")
+{
+    <div class="admin-grid">
+        <section class="panel">
+            <div class="panel-heading">
+                <div><p class="eyebrow">Single date</p><h2>One-off tasks</h2></div>
+                <button class="button button-secondary" @onclick="NewOneOff">New</button>
+            </div>
+            @if (_oneOffTasks.Count == 0)
+            {
+                <p class="muted">No one-off tasks yet.</p>
+            }
+            else
+            {
+                <div class="item-list">
+                    @foreach (var task in _oneOffTasks)
+                    {
+                        <button class="list-item @(_oneOff.Id == task.Id ? "selected" : null)" @onclick="() => EditOneOff(task)">
+                            <span><strong>@task.Title</strong><small>@DateOnly.Parse(task.ScheduledDate).ToString("ddd, d MMM yyyy")</small></span>
+                        </button>
+                    }
+                </div>
+            }
+        </section>
+        <section class="panel editor-panel">
+            <p class="eyebrow">@(_oneOff.Id is null ? "New one-off" : "Edit one-off")</p>
+            <h2>@(_oneOff.Id is null ? "Add a task" : _oneOff.Title)</h2>
+            <EditForm Model="_oneOff" OnValidSubmit="SaveOneOffAsync" FormName="one-off-editor">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+                <div class="form-grid">
+                    <div class="field span-2"><label for="one-title">Title</label><InputText id="one-title" @bind-Value="_oneOff.Title" /></div>
+                    <div class="field span-2"><label for="one-notes">Notes</label><InputTextArea id="one-notes" @bind-Value="_oneOff.Notes" /></div>
+                    <div class="field"><label for="one-date">Date</label><input id="one-date" type="date" value="@_oneOff.ScheduledDate" @onchange="SetOneOffDate" /></div>
+                    <div class="field"><label for="one-deadline">Deadline (optional)</label><input id="one-deadline" type="time" value="@_oneOff.DeadlineTime" @onchange="SetOneOffDeadline" /></div>
+                    <div class="field">
+                        <label for="one-urgency">Urgency</label>
+                        <InputSelect id="one-urgency" @bind-Value="_oneOff.UrgencyMode">
+                            <option value="@UrgencyMode.None">Never urgent</option>
+                            <option value="@UrgencyMode.AfterDeadline">After deadline</option>
+                            <option value="@UrgencyMode.BeforeAndAfterDeadline">Before and after deadline</option>
+                        </InputSelect>
+                    </div>
+                    @if (_oneOff.UrgencyMode == UrgencyMode.BeforeAndAfterDeadline)
+                    {
+                        <div class="field"><label for="one-warning">Warning minutes</label><InputNumber id="one-warning" @bind-Value="_oneOff.WarningMinutes" /></div>
+                    }
+                    <div class="field"><label for="one-bleed">Bleed override in minutes</label><InputNumber id="one-bleed" @bind-Value="_oneOff.BleedOverrideMinutes" placeholder="Use global" /></div>
+                </div>
+                <div class="form-actions">
+                    <button class="button button-primary" type="submit" disabled="@_saving">Save one-off task</button>
+                    @if (_oneOff.Id is not null)
+                    {
+                        <button class="button button-danger" type="button" @onclick="DeleteOneOffAsync">Delete if pending</button>
+                    }
+                </div>
+            </EditForm>
+        </section>
+    </div>
+}
+else if (_tab == SettingsTab)
+{
+    <section class="panel settings-panel">
+        <p class="eyebrow">Household</p>
+        <h2>Settings</h2>
+        <EditForm Model="_settings" OnValidSubmit="SaveSettingsAsync" FormName="settings-editor">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            <div class="form-grid">
+                <div class="field span-2">
+                    <label for="timezone">IANA time zone</label>
+                    <InputText id="timezone" @bind-Value="_settings.TimeZoneId" />
+                    <small>For example, Europe/London or America/New_York.</small>
+                </div>
+                <div class="field">
+                    <label for="global-bleed">Default midnight bleed (minutes)</label>
+                    <InputNumber id="global-bleed" @bind-Value="_settings.DefaultBleedMinutes" />
+                </div>
+                <div class="field"><label for="country">Holiday country code</label><InputText id="country" @bind-Value="_settings.CountryCode" placeholder="GB" /></div>
+                <div class="field"><label for="subdivision">Holiday subdivision</label><InputText id="subdivision" @bind-Value="_settings.SubdivisionCode" placeholder="GB-ENG" /></div>
+            </div>
+            <div class="cache-status">
+                <span>Holiday cache</span>
+                @if (_holidayCache.CachedYears == 0)
+                {
+                    <strong>Not populated yet</strong>
+                    <small>Data is fetched when an active schedule uses a holiday adjustment.</small>
+                }
+                else
+                {
+                    <strong>@_holidayCache.CachedYears year(s) cached</strong>
+                    <small>Last refreshed @DateTimeOffset.Parse(_holidayCache.LastFetchedAtUtc!).ToString("d MMM yyyy, HH:mm 'UTC'")</small>
+                }
+            </div>
+            <div class="system-status">
+                <div><span>Application</span><strong>Daybreak @ApplicationVersion</strong></div>
+                <div><span>Database schema</span><strong>Version @SchemaManifest.CurrentVersion</strong></div>
+                <div><span>Health endpoint</span><a href="/health" target="_blank">Open health check</a></div>
+            </div>
+            <div class="form-actions">
+                <button class="button button-primary" type="submit" disabled="@_saving">Save settings</button>
+                <button class="button button-secondary" type="button" disabled="@_saving" @onclick="RefreshHolidaysAsync">Refresh holidays</button>
+            </div>
+        </EditForm>
+    </section>
+}
+else
+{
+    <section class="history-section">
+        <div class="history-search field">
+            <label for="history-search">Search history</label>
+            <InputText id="history-search" @bind-Value="_historySearch" @bind-Value:event="oninput" placeholder="Activity or event" />
+        </div>
+        <div class="metric-grid">
+            <article class="metric"><span>Completion rate</span><strong>@_history.CompletionRate%</strong><small>@_history.Completed of @_history.Total</small></article>
+            <article class="metric"><span>On time</span><strong>@_history.OnTime</strong><small>Completed by deadline</small></article>
+            <article class="metric"><span>Late</span><strong>@_history.Late</strong><small>Completed after deadline</small></article>
+            <article class="metric"><span>Unfinished</span><strong>@_history.Unfinished</strong><small>Expired occurrences</small></article>
+        </div>
+
+        <div class="history-grid">
+            <section class="panel">
+                <p class="eyebrow">Last eight weeks</p>
+                <h2>Completion trend</h2>
+                @if (_history.Weeks.Count == 0)
+                {
+                    <p class="muted">History will appear as occurrences complete or expire.</p>
+                }
+                else
+                {
+                    <div class="trend-chart" role="img" aria-label="Weekly completion rates">
+                        @foreach (var week in _history.Weeks)
+                        {
+                            <div class="trend-column" title="Week of @week.WeekStart: @week.CompletionRate%">
+                                <div class="trend-track"><span style="height: @week.CompletionRate%"></span></div>
+                                <small>@week.WeekStart.ToString("d MMM")</small>
+                            </div>
+                        }
+                    </div>
+                }
+            </section>
+            <section class="panel">
+                <p class="eyebrow">By activity</p>
+                <h2>Completion rates</h2>
+                <div class="summary-list">
+                    @foreach (var activity in _history.Activities)
+                    {
+                        <div><span><strong>@activity.Title</strong><small>@activity.Completed complete · @activity.Expired unfinished</small></span><b>@activity.CompletionRate%</b></div>
+                    }
+                </div>
+            </section>
+            <section class="panel">
+                <p class="eyebrow">Last twelve months</p>
+                <h2>Monthly trend</h2>
+                @if (_history.Months.Count == 0)
+                {
+                    <p class="muted">Monthly history will appear as occurrences complete or expire.</p>
+                }
+                else
+                {
+                    <div class="trend-chart" role="img" aria-label="Monthly completion rates">
+                        @foreach (var month in _history.Months)
+                        {
+                            <div class="trend-column" title="@month.MonthStart.ToString("MMMM yyyy"): @month.CompletionRate%">
+                                <div class="trend-track"><span style="height: @month.CompletionRate%"></span></div>
+                                <small>@month.MonthStart.ToString("MMM")</small>
+                            </div>
+                        }
+                    </div>
+                }
+            </section>
+        </div>
+
+        <section class="panel recent-history">
+            <p class="eyebrow">Recent</p>
+            <h2>Occurrence history</h2>
+            <div class="history-table-wrap">
+                <table>
+                    <thead><tr><th>Activity</th><th>Scheduled</th><th>Result</th><th>Completed</th></tr></thead>
+                    <tbody>
+                    @foreach (var entry in FilteredOccurrences)
+                    {
+                        <tr>
+                            <td><strong>@entry.Title</strong>@if (entry.NominalDate != entry.EffectiveDate){<small>Moved from @entry.NominalDate.ToString("d MMM")</small>}</td>
+                            <td>@entry.EffectiveDate.ToString("d MMM yyyy")</td>
+                            <td><span class="history-status @entry.Timing.ToLowerInvariant().Replace(" ", "-")">@entry.Timing</span></td>
+                            <td>@(entry.CompletedAt?.ToString("d MMM, HH:mm") ?? "—")</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="panel recent-history">
+            <p class="eyebrow">Audit trail</p>
+            <h2>Recent events</h2>
+            <div class="history-table-wrap">
+                <table>
+                    <thead><tr><th>Activity</th><th>Event</th><th>When</th><th>Transition</th></tr></thead>
+                    <tbody>
+                    @foreach (var entry in FilteredEvents)
+                    {
+                        <tr>
+                            <td><strong>@entry.Title</strong></td>
+                            <td>@entry.EventType</td>
+                            <td>@entry.OccurredAt.ToString("d MMM yyyy, HH:mm")</td>
+                            <td>@(entry.PreviousState?.ToString() ?? "Created") → @entry.NewState</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </section>
+}
+
+@code {
+    private const string ActivitiesTab = "activities";
+    private const string OneOffsTab = "one-offs";
+    private const string SettingsTab = "settings";
+    private const string HistoryTab = "history";
+    private List<Activity> _activities = [];
+    private List<OneOffTask> _oneOffTasks = [];
+    private ActivityForm _activity = new();
+    private OneOffForm _oneOff = new();
+    private SettingsForm _settings = new();
+    private HistorySnapshot _history = new(0, 0, 0, 0, 0, [], [], [], [], []);
+    private HolidayCacheStatus _holidayCache = new();
+    private string _tab = "activities";
+    private bool _loading = true;
+    private bool _saving;
+    private bool _showArchived;
+    private string _historySearch = string.Empty;
+    private string? _message;
+    private bool _messageIsError;
+    private string _adjustedPreview = "Use the preview to check moved, suppressed, or colliding dates.";
+    private static string ApplicationVersion => typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "development";
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _activities = (await Activities.ListAsync(_showArchived)).ToList();
+        _oneOffTasks = (await OneOffTasks.ListAsync()).ToList();
+        var settings = await Settings.GetAsync();
+        _settings = new SettingsForm
+        {
+            TimeZoneId = settings.TimeZoneId,
+            DefaultBleedMinutes = settings.DefaultBleedMinutes,
+            CountryCode = settings.HolidayCountryCode,
+            SubdivisionCode = settings.HolidaySubdivisionCode,
+        };
+        if (_activity.Id is null && string.IsNullOrWhiteSpace(_activity.StartDate))
+        {
+            _activity = ActivityForm.Create(HouseholdToday);
+        }
+        if (_oneOff.Id is null && string.IsNullOrWhiteSpace(_oneOff.ScheduledDate))
+        {
+            _oneOff = OneOffForm.Create(HouseholdToday);
+        }
+        _history = await History.GetAsync();
+        _holidayCache = await Settings.GetHolidayCacheStatusAsync();
+        _loading = false;
+    }
+
+    private string TabClass(string tab) => _tab == tab ? "active" : string.Empty;
+    private void ShowActivities() => _tab = ActivitiesTab;
+    private void ShowOneOffs() => _tab = OneOffsTab;
+    private void ShowSettings() => _tab = SettingsTab;
+    private async Task ShowHistory()
+    {
+        _history = await History.GetAsync();
+        _tab = HistoryTab;
+    }
+    private void SetActivityStartDate(ChangeEventArgs args) => _activity.StartDate = args.Value?.ToString() ?? string.Empty;
+    private void SetActivityEndDate(ChangeEventArgs args) => _activity.EndDate = args.Value?.ToString();
+    private void SetActivityDeadline(ChangeEventArgs args) => _activity.DeadlineTime = args.Value?.ToString();
+    private void SetOneOffDate(ChangeEventArgs args) => _oneOff.ScheduledDate = args.Value?.ToString() ?? string.Empty;
+    private void SetOneOffDeadline(ChangeEventArgs args) => _oneOff.DeadlineTime = args.Value?.ToString();
+    private void NewActivity() => _activity = ActivityForm.Create(HouseholdToday);
+    private void NewOneOff() => _oneOff = OneOffForm.Create(HouseholdToday);
+    private void EditActivity(Activity activity) => _activity = ActivityForm.From(activity);
+    private void EditOneOff(OneOffTask task) => _oneOff = OneOffForm.From(task);
+
+    private async Task ToggleArchivedAsync()
+    {
+        _showArchived = !_showArchived;
+        _activities = (await Activities.ListAsync(_showArchived)).ToList();
+        if (!_showArchived && _activity.ArchivedAtUtc is not null)
+        {
+            _activity = ActivityForm.Create(HouseholdToday);
+        }
+    }
+
+    private async Task SaveActivityAsync()
+    {
+        await RunSaveAsync(async () =>
+        {
+            var id = await Activities.SaveAsync(_activity.ToActivity());
+            await Generator.EnsureRollingHorizonAsync();
+            _activities = (await Activities.ListAsync(_showArchived)).ToList();
+            _activity = ActivityForm.From((await Activities.GetAsync(id))!);
+        }, "Activity saved.");
+    }
+
+    private async Task ArchiveActivityAsync()
+    {
+        if (_activity.Id is null)
+        {
+            return;
+        }
+
+        await RunSaveAsync(async () =>
+        {
+            await Activities.ArchiveAsync(_activity.Id);
+            _activities = (await Activities.ListAsync(_showArchived)).ToList();
+            _activity = ActivityForm.Create(HouseholdToday);
+        }, "Activity archived.");
+    }
+
+    private async Task RestoreActivityAsync()
+    {
+        if (_activity.Id is null)
+        {
+            return;
+        }
+
+        await RunSaveAsync(async () =>
+        {
+            await Activities.RestoreAsync(_activity.Id);
+            await Generator.EnsureRollingHorizonAsync();
+            _activities = (await Activities.ListAsync(_showArchived)).ToList();
+            _activity = ActivityForm.From((await Activities.GetAsync(_activity.Id))!);
+        }, "Activity restored.");
+    }
+
+    private async Task SaveOneOffAsync()
+    {
+        await RunSaveAsync(async () =>
+        {
+            var id = await OneOffTasks.SaveAsync(_oneOff.ToTask());
+            await Generator.EnsureRollingHorizonAsync();
+            _oneOffTasks = (await OneOffTasks.ListAsync()).ToList();
+            _oneOff = OneOffForm.From(_oneOffTasks.Single(item => item.Id == id));
+        }, "One-off task saved.");
+    }
+
+    private async Task DeleteOneOffAsync()
+    {
+        if (_oneOff.Id is null)
+        {
+            return;
+        }
+
+        await RunSaveAsync(async () =>
+        {
+            if (!await OneOffTasks.DeletePendingAsync(_oneOff.Id))
+            {
+                throw new InvalidOperationException("Completed or expired tasks are retained in history and cannot be deleted.");
+            }
+            _oneOffTasks = (await OneOffTasks.ListAsync()).ToList();
+            _oneOff = OneOffForm.Create(HouseholdToday);
+        }, "One-off task deleted.");
+    }
+
+    private async Task SaveSettingsAsync() => await RunSaveAsync(async () =>
+    {
+        await Settings.UpdateAsync(_settings.TimeZoneId, _settings.DefaultBleedMinutes, _settings.CountryCode, _settings.SubdivisionCode);
+        await Generator.EnsureRollingHorizonAsync();
+        _holidayCache = await Settings.GetHolidayCacheStatusAsync();
+    }, "Household settings saved.");
+
+    private async Task RefreshHolidaysAsync() => await RunSaveAsync(async () =>
+    {
+        var savedSettings = await Settings.GetAsync();
+        if (string.IsNullOrWhiteSpace(savedSettings.HolidayCountryCode))
+        {
+            throw new InvalidOperationException("Set and save a holiday country code before refreshing.");
+        }
+
+        var year = LocalTimeResolver.Today(
+            Clock,
+            TimeZoneInfo.FindSystemTimeZoneById(savedSettings.TimeZoneId)).Year;
+        await HolidayProvider.RefreshHolidayDatesAsync(
+            year,
+            savedSettings.HolidayCountryCode,
+            savedSettings.HolidaySubdivisionCode);
+        await HolidayProvider.RefreshHolidayDatesAsync(
+            year + 1,
+            savedSettings.HolidayCountryCode,
+            savedSettings.HolidaySubdivisionCode);
+        await Generator.EnsureRollingHorizonAsync();
+        _holidayCache = await Settings.GetHolidayCacheStatusAsync();
+    }, "Holiday data refreshed for this year and next year.");
+
+    private async Task RunSaveAsync(Func<Task> operation, string success)
+    {
+        _saving = true;
+        try
+        {
+            await operation();
+            _message = success;
+            _messageIsError = false;
+        }
+        catch (Exception exception)
+        {
+            _message = exception.Message;
+            _messageIsError = true;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private bool IsDaySelected(DayOfWeek day) => (_activity.DaysOfWeekMask & RecurrenceCalculator.DayMask(day)) != 0;
+    private void ToggleDay(DayOfWeek day) => _activity.DaysOfWeekMask ^= RecurrenceCalculator.DayMask(day);
+
+    private string PreviewDates()
+    {
+        try
+        {
+            return string.Join(" · ", RecurrenceCalculator.Preview(_activity.ToActivity(), HouseholdToday, 5).Select(date => date.ToString("d MMM")));
+        }
+        catch
+        {
+            return "Complete the schedule to preview dates";
+        }
+    }
+
+    private async Task PreviewAdjustedDatesAsync()
+    {
+        try
+        {
+            var nominalDates = RecurrenceCalculator.Preview(_activity.ToActivity(), HouseholdToday, 8);
+            if (nominalDates.Count == 0)
+            {
+                _adjustedPreview = "No occurrences fall within the next two years.";
+                return;
+            }
+
+            var holidayDates = new HashSet<DateOnly>();
+            if (_activity.HolidayPolicy != HolidayPolicy.Keep && !string.IsNullOrWhiteSpace(_settings.CountryCode))
+            {
+                for (var year = nominalDates.Min().AddDays(-14).Year; year <= nominalDates.Max().AddDays(14).Year; year++)
+                {
+                    holidayDates.UnionWith(await HolidayProvider.GetHolidayDatesAsync(
+                        year,
+                        _settings.CountryCode,
+                        _settings.SubdivisionCode));
+                }
+                _holidayCache = await Settings.GetHolidayCacheStatusAsync();
+            }
+
+            var adjusted = nominalDates.Select(nominal => new
+            {
+                Nominal = nominal,
+                Effective = OccurrenceGenerator.AdjustForHoliday(_activity.HolidayPolicy, nominal, holidayDates),
+            }).ToList();
+            var collisions = adjusted
+                .Where(item => item.Effective is not null)
+                .GroupBy(item => item.Effective)
+                .Where(group => group.Count() > 1)
+                .Select(group => group.Key)
+                .ToHashSet();
+            _adjustedPreview = string.Join(" · ", adjusted.Select(item => item.Effective switch
+            {
+                null => $"{item.Nominal:d MMM} suppressed",
+                var effective when effective != item.Nominal =>
+                    $"{item.Nominal:d MMM} → {effective:d MMM}{(collisions.Contains(effective) ? " (collision)" : string.Empty)}",
+                var effective => $"{effective:d MMM}{(collisions.Contains(effective) ? " (collision)" : string.Empty)}",
+            }));
+        }
+        catch (Exception exception)
+        {
+            _adjustedPreview = $"Preview unavailable: {exception.Message}";
+        }
+    }
+
+    private static string RecurrenceLabel(RecurrenceKind kind) => kind switch
+    {
+        RecurrenceKind.SelectedWeekdays => "Selected weekdays",
+        RecurrenceKind.EveryNDays => "Every N days",
+        RecurrenceKind.EveryNWeeks => "Every N weeks",
+        RecurrenceKind.MonthlyDate => "Monthly by date",
+        RecurrenceKind.MonthlyOrdinalWeekday => "Monthly by weekday",
+        _ => "Daily",
+    };
+
+    private static string HolidayLabel(HolidayPolicy policy) => policy switch
+    {
+        HolidayPolicy.Suppress => "Do not generate",
+        HolidayPolicy.MoveEarlier => "Move earlier",
+        HolidayPolicy.MoveLater => "Move later",
+        _ => "Keep the date",
+    };
+
+    private static string ScheduleSummary(Activity activity) => activity.RecurrenceKind switch
+    {
+        RecurrenceKind.SelectedWeekdays => "Selected weekdays",
+        RecurrenceKind.EveryNDays => $"Every {activity.Interval} day(s)",
+        RecurrenceKind.EveryNWeeks => $"Every {activity.Interval} week(s)",
+        RecurrenceKind.MonthlyDate => $"Day {activity.DayOfMonth} each month",
+        RecurrenceKind.MonthlyOrdinalWeekday => "Monthly weekday",
+        _ => "Every day",
+    };
+
+    private IEnumerable<HistoryEntry> FilteredOccurrences => string.IsNullOrWhiteSpace(_historySearch)
+        ? _history.Recent
+        : _history.Recent.Where(entry => entry.Title.Contains(_historySearch, StringComparison.OrdinalIgnoreCase) ||
+            entry.Timing.Contains(_historySearch, StringComparison.OrdinalIgnoreCase));
+
+    private IEnumerable<AuditEventEntry> FilteredEvents => string.IsNullOrWhiteSpace(_historySearch)
+        ? _history.Events
+        : _history.Events.Where(entry => entry.Title.Contains(_historySearch, StringComparison.OrdinalIgnoreCase) ||
+            entry.EventType.Contains(_historySearch, StringComparison.OrdinalIgnoreCase));
+
+    private static int? ParseTime(string? value) => TimeOnly.TryParse(value, out var time) ? (time.Hour * 60) + time.Minute : null;
+    private static string? FormatTime(int? value) => value is null ? null : TimeOnly.MinValue.AddMinutes(value.Value).ToString("HH:mm");
+
+    private DateOnly HouseholdToday
+    {
+        get
+        {
+            try
+            {
+                return LocalTimeResolver.Today(Clock, TimeZoneInfo.FindSystemTimeZoneById(_settings.TimeZoneId));
+            }
+            catch (TimeZoneNotFoundException)
+            {
+                return DateOnly.FromDateTime(Clock.GetUtcNow().UtcDateTime);
+            }
+        }
+    }
+
+    private sealed class ActivityForm
+    {
+        public string? Id { get; set; }
+        [Required, StringLength(120)] public string Title { get; set; } = string.Empty;
+        [StringLength(1000)] public string? Notes { get; set; }
+        public RecurrenceKind RecurrenceKind { get; set; }
+        [Range(1, 365)] public int Interval { get; set; } = 1;
+        public int DaysOfWeekMask { get; set; }
+        [Range(1, 31)] public int? DayOfMonth { get; set; } = 1;
+        [Range(1, 5)] public int? Ordinal { get; set; } = 1;
+        [Range(0, 6)] public int? Weekday { get; set; } = 1;
+        [Required] public string StartDate { get; set; } = string.Empty;
+        public string? EndDate { get; set; }
+        public string? DeadlineTime { get; set; }
+        public UrgencyMode UrgencyMode { get; set; }
+        [Range(0, 1440)] public int WarningMinutes { get; set; } = 30;
+        [Range(0, 720)] public int? BleedOverrideMinutes { get; set; }
+        public HolidayPolicy HolidayPolicy { get; set; }
+        public bool IsPaused { get; set; }
+        public string? ArchivedAtUtc { get; set; }
+        public string? CreatedAtUtc { get; set; }
+
+        public static ActivityForm Create(DateOnly today) => new() { StartDate = today.ToString("yyyy-MM-dd") };
+
+        public static ActivityForm From(Activity value) => new()
+        {
+            Id = value.Id, Title = value.Title, Notes = value.Notes, RecurrenceKind = value.RecurrenceKind,
+            Interval = value.Interval, DaysOfWeekMask = value.DaysOfWeekMask, DayOfMonth = value.DayOfMonth,
+            Ordinal = value.Ordinal, Weekday = value.Weekday, StartDate = value.StartDate, EndDate = value.EndDate,
+            DeadlineTime = FormatTime(value.DeadlineMinutes), UrgencyMode = value.UrgencyMode,
+            WarningMinutes = value.WarningMinutes, BleedOverrideMinutes = value.BleedOverrideMinutes,
+            HolidayPolicy = value.HolidayPolicy, IsPaused = value.IsPaused, ArchivedAtUtc = value.ArchivedAtUtc,
+            CreatedAtUtc = value.CreatedAtUtc,
+        };
+
+        public Activity ToActivity() => new(
+            Id ?? string.Empty, Title, Notes, RecurrenceKind, Interval, DaysOfWeekMask, DayOfMonth, Ordinal, Weekday,
+            StartDate, string.IsNullOrWhiteSpace(EndDate) ? null : EndDate, ParseTime(DeadlineTime), UrgencyMode,
+            WarningMinutes, BleedOverrideMinutes, HolidayPolicy, IsPaused, ArchivedAtUtc, CreatedAtUtc ?? string.Empty, string.Empty);
+    }
+
+    private sealed class OneOffForm
+    {
+        public string? Id { get; set; }
+        [Required, StringLength(120)] public string Title { get; set; } = string.Empty;
+        [StringLength(1000)] public string? Notes { get; set; }
+        [Required] public string ScheduledDate { get; set; } = string.Empty;
+        public string? DeadlineTime { get; set; }
+        public UrgencyMode UrgencyMode { get; set; }
+        [Range(0, 1440)] public int WarningMinutes { get; set; } = 30;
+        [Range(0, 720)] public int? BleedOverrideMinutes { get; set; }
+        public string? CreatedAtUtc { get; set; }
+
+        public static OneOffForm Create(DateOnly today) => new() { ScheduledDate = today.ToString("yyyy-MM-dd") };
+        public static OneOffForm From(OneOffTask value) => new()
+        {
+            Id = value.Id, Title = value.Title, Notes = value.Notes, ScheduledDate = value.ScheduledDate,
+            DeadlineTime = FormatTime(value.DeadlineMinutes), UrgencyMode = value.UrgencyMode,
+            WarningMinutes = value.WarningMinutes, BleedOverrideMinutes = value.BleedOverrideMinutes,
+            CreatedAtUtc = value.CreatedAtUtc,
+        };
+
+        public OneOffTask ToTask() => new(
+            Id ?? string.Empty, Title, Notes, ScheduledDate, ParseTime(DeadlineTime), UrgencyMode, WarningMinutes,
+            BleedOverrideMinutes, null, null, CreatedAtUtc ?? string.Empty, string.Empty);
+    }
+
+    private sealed class SettingsForm
+    {
+        [Required] public string TimeZoneId { get; set; } = "Europe/London";
+        [Range(0, 720)] public int DefaultBleedMinutes { get; set; } = 120;
+        [StringLength(2, MinimumLength = 2)] public string? CountryCode { get; set; }
+        [StringLength(12)] public string? SubdivisionCode { get; set; }
+    }
+}

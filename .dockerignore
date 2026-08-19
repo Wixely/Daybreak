@@ -1,0 +1,12 @@
+**/bin
+**/obj
+.git
+.github
+.vs
+.vscode
+artifacts
+src/Daybreak/App_Data
+src/Daybreak/Data/*.db
+tests
+*.md
+!README.md

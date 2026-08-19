@@ -1,0 +1,68 @@
+@using Daybreak.Domain
+
+<div class="activity-card-topline">
+    <div class="status-badges">
+        @if (Item.IsCarried(Today))
+        {
+            <span class="status-badge carried">From yesterday</span>
+        }
+        else if (Item.State == OccurrenceState.Completed)
+        {
+            <span class="status-badge complete">Complete</span>
+        }
+        else if (Item.IsOverdue(Now))
+        {
+            <span class="status-badge @(Item.IsUrgent(Now) ? "overdue" : "past")">Past deadline</span>
+        }
+        else if (Item.IsDueSoon(Now))
+        {
+            <span class="status-badge soon">Due soon</span>
+        }
+        else
+        {
+            <span class="status-badge todo">To do</span>
+        }
+        @if (Item.NominalDate != Item.EffectiveDate)
+        {
+            <span class="status-badge moved">Moved from @Item.NominalDate.ToString("d MMM")</span>
+        }
+    </div>
+    @if (Item.Deadline is not null)
+    {
+        <time datetime="@Item.Deadline.Value.ToString("O")">@FormatTime(Item.Deadline.Value)</time>
+    }
+</div>
+<h2>@Item.Title</h2>
+@if (!string.IsNullOrWhiteSpace(Item.Notes))
+{
+    <p>@Item.Notes</p>
+}
+<div class="activity-card-footer">
+    @if (Item.State == OccurrenceState.Completed)
+    {
+        <span class="completion-mark" aria-hidden="true">✓</span>
+        <span>Done @(Item.CompletedAt is null ? string.Empty : FormatTime(Item.CompletedAt.Value))</span>
+    }
+    else
+    {
+        <span>Tap when complete</span>
+        <span class="tap-arrow" aria-hidden="true">→</span>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public BoardItem Item { get; set; } = default!;
+
+    [Parameter]
+    public DateOnly Today { get; set; }
+
+    [Parameter]
+    public DateTimeOffset Now { get; set; }
+
+    [Parameter, EditorRequired]
+    public string TimeZoneId { get; set; } = "UTC";
+
+    private string FormatTime(DateTimeOffset instant) =>
+        TimeZoneInfo.ConvertTime(instant, TimeZoneInfo.FindSystemTimeZoneById(TimeZoneId)).ToString("HH:mm");
+}

@@ -1,0 +1,229 @@
+@page "/"
+@layout DashboardLayout
+@implements IAsyncDisposable
+@inject BoardService Board
+@inject BoardChangeNotifier Changes
+@inject TimeProvider Clock
+@inject ILogger<Home> Logger
+
+<PageTitle>Today · Daybreak</PageTitle>
+
+<section class="dashboard-heading">
+    <div>
+        <p class="eyebrow">Today</p>
+        <h1>@(_snapshot?.Today.ToString("dddd, d MMMM") ?? "Loading…")</h1>
+        <p class="lede">@Summary</p>
+    </div>
+    <div class="connection-pill connected" role="status" title="Revision @(_snapshot?.Revision ?? 0)">
+        <span aria-hidden="true"></span> Live
+    </div>
+</section>
+
+@if (_error is not null)
+{
+    <section class="empty-state error-state" role="alert">
+        <p class="eyebrow">Could not load the board</p>
+        <h2>Daybreak hit a cloud.</h2>
+        <p>@_error</p>
+        <button class="button button-primary" @onclick="RefreshAsync">Try again</button>
+    </section>
+}
+else if (_snapshot is null)
+{
+    <section class="loading-state" aria-label="Loading today's activities">
+        <span></span><span></span><span></span>
+    </section>
+}
+else if (_snapshot.Items.Count == 0)
+{
+    <section class="empty-state">
+        <p class="eyebrow">All clear</p>
+        <h2>Nothing needs attention</h2>
+        <p>Add a recurring activity or one-off task from configuration.</p>
+        <a class="button button-primary" href="/admin">Configure Daybreak</a>
+    </section>
+}
+else
+{
+    <section class="activity-grid" aria-label="Today's activities" aria-busy="@_refreshing">
+        @foreach (var item in _snapshot.Items)
+        {
+            var now = Clock.GetUtcNow();
+            var busy = _working.Contains(item.Id);
+            <article class="@CardClass(item, now)">
+                @if (item.State == OccurrenceState.Pending)
+                {
+                    <button class="activity-action" disabled="@busy" @onclick="() => CompleteAsync(item)"
+                            aria-label="Mark @item.Title complete">
+                        <CardContents Item="item" Today="_snapshot.Today" Now="now" TimeZoneId="@_snapshot.TimeZoneId" />
+                    </button>
+                }
+                else
+                {
+                    <div class="activity-action completed-content">
+                        <CardContents Item="item" Today="_snapshot.Today" Now="now" TimeZoneId="@_snapshot.TimeZoneId" />
+                    </div>
+                    <button class="undo-button" disabled="@busy" @onclick="() => UndoAsync(item)">Undo</button>
+                }
+            </article>
+        }
+    </section>
+}
+
+@code {
+    private readonly HashSet<string> _working = [];
+    private readonly CancellationTokenSource _disposeToken = new();
+    private BoardSnapshot? _snapshot;
+    private string? _error;
+    private bool _refreshing;
+    private long _requestedRevision;
+    private Task? _clockTask;
+
+    private string Summary
+    {
+        get
+        {
+            if (_snapshot is null)
+            {
+                return "Waking up the household board.";
+            }
+
+            var pending = _snapshot.Items.Count(item => item.State == OccurrenceState.Pending);
+            var completed = _snapshot.Items.Count - pending;
+            return pending == 0
+                ? $"Everything is complete · {completed} done"
+                : $"{pending} to do · {completed} done";
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Changes.Changed += HandleBoardChangedAsync;
+        await RefreshAsync();
+        _clockTask = RunClockAsync(_disposeToken.Token);
+    }
+
+    private async Task RefreshAsync()
+    {
+        if (_refreshing)
+        {
+            return;
+        }
+
+        _refreshing = true;
+        try
+        {
+            do
+            {
+                _snapshot = await Board.GetSnapshotAsync(_disposeToken.Token);
+                _error = null;
+            }
+            while (_snapshot.Revision < _requestedRevision);
+        }
+        catch (OperationCanceledException) when (_disposeToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Could not refresh the Daybreak dashboard.");
+            _error = "The board could not be refreshed. Check the connection and try again.";
+        }
+        finally
+        {
+            _refreshing = false;
+        }
+    }
+
+    private Task HandleBoardChangedAsync(long revision) => InvokeAsync(async () =>
+    {
+        _requestedRevision = Math.Max(_requestedRevision, revision);
+        if (_snapshot is null || revision > _snapshot.Revision)
+        {
+            await RefreshAsync();
+            StateHasChanged();
+        }
+    });
+
+    private async Task CompleteAsync(BoardItem item) => await MutateAsync(
+        item,
+        () => Board.CompleteAsync(item.Id, item.Version, _disposeToken.Token));
+
+    private async Task UndoAsync(BoardItem item) => await MutateAsync(
+        item,
+        () => Board.UndoAsync(item.Id, item.Version, _disposeToken.Token));
+
+    private async Task MutateAsync(BoardItem item, Func<Task<bool>> command)
+    {
+        if (!_working.Add(item.Id))
+        {
+            return;
+        }
+
+        try
+        {
+            await command();
+            await RefreshAsync();
+        }
+        catch (OperationCanceledException) when (_disposeToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Could not update occurrence {OccurrenceId} from the dashboard.", item.Id);
+            _error = "That change could not be saved. Check the connection and try again.";
+        }
+        finally
+        {
+            _working.Remove(item.Id);
+        }
+    }
+
+    private async Task RunClockAsync(CancellationToken cancellationToken)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(15));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+    }
+
+    private static string CardClass(BoardItem item, DateTimeOffset now)
+    {
+        var classes = new List<string> { "activity-card" };
+        if (item.State == OccurrenceState.Completed)
+        {
+            classes.Add("completed");
+        }
+        else if (item.IsOverdue(now))
+        {
+            classes.Add(item.IsUrgent(now) ? "urgent overdue" : "pending past-deadline");
+        }
+        else if (item.IsDueSoon(now))
+        {
+            classes.Add("urgent due-soon");
+        }
+        else
+        {
+            classes.Add("pending");
+        }
+
+        return string.Join(' ', classes);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Changes.Changed -= HandleBoardChangedAsync;
+        await _disposeToken.CancelAsync();
+        if (_clockTask is not null)
+        {
+            await _clockTask;
+        }
+        _disposeToken.Dispose();
+    }
+}

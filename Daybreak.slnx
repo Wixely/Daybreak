@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="src/Daybreak/Daybreak.csproj" />
+  <Project Path="tests/Daybreak.Tests/Daybreak.Tests.csproj" />
+</Solution>

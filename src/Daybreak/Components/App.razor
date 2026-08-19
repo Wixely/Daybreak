@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#111a2c" />
+    <base href="/" />
+    <link rel="stylesheet" href="@Assets["app.css"]" />
+    <link rel="icon" type="image/svg+xml" href="@Assets["favicon.svg"]" />
+    <HeadOutlet @rendermode="InteractiveServer" />
+</head>
+<body>
+    <Routes @rendermode="InteractiveServer" />
+    <div id="components-reconnect-modal" class="reconnect-modal components-reconnect-hide" role="alert" aria-live="assertive">
+        <div class="reconnect-card">
+            <span class="connection-symbol" aria-hidden="true">↻</span>
+            <h2>Dashboard disconnected</h2>
+            <p>This view may be stale. Actions are paused while Daybreak reconnects.</p>
+            <button id="components-reconnect-button" class="button button-primary">Reconnect now</button>
+        </div>
+    </div>
+    <script src="@Assets["_framework/blazor.web.js"]"></script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+@inherits LayoutComponentBase
+
+<div class="kiosk-shell">
+    <header class="kiosk-header">
+        <span class="brand">
+            <span class="brand-mark" aria-hidden="true">◐</span>
+            <span>Daybreak</span>
+        </span>
+        <a class="configure-link" href="/admin" aria-label="Configure Daybreak" title="Configure Daybreak">⚙</a>
+    </header>
+    <main>
+        @Body
+    </main>
+</div>
+
+<div id="blazor-error-ui" role="alert">
+    Daybreak lost its connection. <a href="." class="reload">Reload</a>
+</div>

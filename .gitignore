@@ -1,0 +1,12 @@
+bin/
+obj/
+.vs/
+.vscode/*.user.json
+artifacts/
+/src/Daybreak/App_Data/
+/src/Daybreak/Data/*.db
+*.db
+*.db-shm
+*.db-wal
+*.user
+*.suo
