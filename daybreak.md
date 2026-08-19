@@ -135,7 +135,7 @@ Each item selects one urgency mode:
 
 The warning window is configurable per item and defaults to 30 minutes.
 
-Urgent items use a strong red treatment and may pulse. The animation must be restrained, must stop when the item is completed or expires, and must respect `prefers-reduced-motion`. Reduced-motion clients receive an equally prominent static treatment. Colour is never the only urgency indicator.
+Urgent items use a strong red treatment and briefly flash brighter once every 60 seconds. The animation must stop when the item is completed or expires and must respect `prefers-reduced-motion`. Reduced-motion clients receive an equally prominent static treatment. Colour is never the only urgency indicator. Items configured with no urgency remain non-flashing after their deadline.
 
 ### Holidays
 
