@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Daybreak.Tests;
 
@@ -56,6 +57,28 @@ public sealed partial class ApplicationSmokeTests
         StringAssert.Contains(dashboardHtml, "Daybreak");
         StringAssert.Contains(dashboardHtml, "Take vitamins");
         Assert.AreEqual(HttpStatusCode.OK, health.StatusCode);
+    }
+
+    [TestMethod]
+    public async Task DashboardSeparatesCompletedActivitiesAndServesRevealBehaviorLocally()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var board = scope.ServiceProvider.GetRequiredService<Daybreak.Services.BoardService>();
+        var item = (await board.GetSnapshotAsync()).Items.First();
+        Assert.IsTrue(await board.CompleteAsync(item.Id, item.Version));
+
+        using var client = _factory.CreateClient();
+        var dashboardHtml = await client.GetStringAsync("/");
+        using var behavior = await client.GetAsync("/dashboard.js");
+        var behaviorScript = await behavior.Content.ReadAsStringAsync();
+
+        var pendingSection = dashboardHtml.IndexOf("aria-label=\"Activities to do\"", StringComparison.Ordinal);
+        var completedSection = dashboardHtml.IndexOf("aria-label=\"Completed activities\"", StringComparison.Ordinal);
+        Assert.IsGreaterThanOrEqualTo(0, pendingSection);
+        Assert.IsGreaterThan(pendingSection, completedSection);
+        Assert.AreEqual(HttpStatusCode.OK, behavior.StatusCode);
+        StringAssert.Contains(behaviorScript, "IntersectionObserver");
+        StringAssert.Contains(behaviorScript, "is-revealed");
     }
 
     [TestMethod]

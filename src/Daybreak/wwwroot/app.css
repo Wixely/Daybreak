@@ -185,6 +185,10 @@ h1 {
     margin-bottom: clamp(2rem, 5vw, 3.5rem);
 }
 
+.dashboard-primary {
+    min-height: calc(100vh - 70px - clamp(1.8rem, 4vw, 3.5rem) - 3rem);
+}
+
 .connection-pill {
     display: inline-flex;
     flex: none;
@@ -213,6 +217,19 @@ h1 {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 310px), 1fr));
     gap: clamp(0.85rem, 2vw, 1.35rem);
+}
+
+.completed-activities {
+    margin-top: -2.75rem;
+}
+
+.completed-activities .activity-card {
+    opacity: 0.25;
+    transition: opacity 240ms ease;
+}
+
+.completed-activities.is-revealed .activity-card {
+    opacity: 1;
 }
 
 .activity-card {

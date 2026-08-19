@@ -5,9 +5,12 @@
 @inject BoardChangeNotifier Changes
 @inject TimeProvider Clock
 @inject ILogger<Home> Logger
+@inject IJSRuntime JavaScript
+@using Microsoft.JSInterop
 
 <PageTitle>Today · Daybreak</PageTitle>
 
+<div class="dashboard-primary">
 <section class="dashboard-heading">
     <div>
         <p class="eyebrow">Today</p>
@@ -45,28 +48,38 @@ else if (_snapshot.Items.Count == 0)
 }
 else
 {
-    <section class="activity-grid" aria-label="Today's activities" aria-busy="@_refreshing">
-        @foreach (var item in _snapshot.Items)
+    <section class="activity-grid" aria-label="Activities to do" aria-busy="@_refreshing">
+        @foreach (var item in _snapshot.Items.Where(item => item.State == OccurrenceState.Pending))
         {
             var now = Clock.GetUtcNow();
             var busy = _working.Contains(item.Id);
             <article class="@CardClass(item, now)">
-                @if (item.State == OccurrenceState.Pending)
-                {
-                    <button class="activity-action" disabled="@busy" @onclick="() => CompleteAsync(item)"
-                            aria-label="Mark @item.Title complete">
-                        <CardContents Item="item" Today="_snapshot.Today" Now="now" TimeZoneId="@_snapshot.TimeZoneId" />
-                    </button>
-                }
-                else
-                {
+                <button class="activity-action" disabled="@busy" @onclick="() => CompleteAsync(item)"
+                        aria-label="Mark @item.Title complete">
+                    <CardContents Item="item" Today="_snapshot.Today" Now="now" TimeZoneId="@_snapshot.TimeZoneId" />
+                </button>
+            </article>
+        }
+    </section>
+}
+</div>
+
+@if (_error is null && _snapshot is not null && _snapshot.Items.Any(item => item.State == OccurrenceState.Completed))
+{
+    <section class="completed-activities" aria-label="Completed activities" @ref="_completedSection">
+        <div class="activity-grid">
+            @foreach (var item in _snapshot.Items.Where(item => item.State == OccurrenceState.Completed))
+            {
+                var now = Clock.GetUtcNow();
+                var busy = _working.Contains(item.Id);
+                <article class="@CardClass(item, now)">
                     <div class="activity-action completed-content">
                         <CardContents Item="item" Today="_snapshot.Today" Now="now" TimeZoneId="@_snapshot.TimeZoneId" />
                     </div>
                     <button class="undo-button" disabled="@busy" @onclick="() => UndoAsync(item)">Undo</button>
-                }
-            </article>
-        }
+                </article>
+            }
+        </div>
     </section>
 }
 
@@ -78,6 +91,9 @@ else
     private bool _refreshing;
     private long _requestedRevision;
     private Task? _clockTask;
+    private ElementReference _completedSection;
+    private IJSObjectReference? _dashboardModule;
+    private bool _completedSectionObserved;
 
     private string Summary
     {
@@ -101,6 +117,24 @@ else
         Changes.Changed += HandleBoardChangedAsync;
         await RefreshAsync();
         _clockTask = RunClockAsync(_disposeToken.Token);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        var hasCompletedItems = _error is null &&
+            _snapshot?.Items.Any(item => item.State == OccurrenceState.Completed) == true;
+
+        if (hasCompletedItems && !_completedSectionObserved)
+        {
+            _dashboardModule ??= await JavaScript.InvokeAsync<IJSObjectReference>("import", "./dashboard.js");
+            await _dashboardModule.InvokeVoidAsync("observeCompletedSection", _completedSection);
+            _completedSectionObserved = true;
+        }
+        else if (!hasCompletedItems && _completedSectionObserved && _dashboardModule is not null)
+        {
+            await _dashboardModule.InvokeVoidAsync("disconnectCompletedSection");
+            _completedSectionObserved = false;
+        }
     }
 
     private async Task RefreshAsync()
@@ -224,6 +258,19 @@ else
         {
             await _clockTask;
         }
+
+        if (_dashboardModule is not null)
+        {
+            try
+            {
+                await _dashboardModule.InvokeVoidAsync("disconnectCompletedSection");
+                await _dashboardModule.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+            }
+        }
+
         _disposeToken.Dispose();
     }
 }
