@@ -1162,6 +1162,12 @@ textarea {
     overflow-x: auto;
     border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 0.8rem;
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+.history-table-wrap table {
+    min-width: 660px;
 }
 
 table {
@@ -1324,8 +1330,15 @@ td small {
 }
 
 @media (max-width: 640px) {
+    .app-shell,
+    .kiosk-shell {
+        padding-right: max(0.75rem, env(safe-area-inset-right));
+        padding-left: max(0.75rem, env(safe-area-inset-left));
+    }
+
     .site-header {
         min-height: 70px;
+        gap: 0.5rem;
     }
 
     .site-header .brand-mark {
@@ -1335,10 +1348,31 @@ td small {
     .dashboard-heading,
     .page-heading {
         align-items: flex-start;
+        gap: 1rem;
     }
 
+    .dashboard-heading,
     .page-heading {
         flex-direction: column;
+    }
+
+    .dashboard-heading .connection-pill {
+        padding: 0.5rem 0.7rem;
+    }
+
+    .dashboard-heading h1 {
+        font-size: clamp(1.9rem, 10vw, 3rem);
+        line-height: 1.02;
+    }
+
+    .activity-card-topline {
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 0.7rem;
+    }
+
+    .deadline-display {
+        margin-left: auto;
     }
 
     .activity-card,
@@ -1360,7 +1394,7 @@ td small {
 
     .catalog-panel {
         position: static;
-        max-height: none;
+        max-height: min(42vh, 25rem);
     }
 
     .metric-grid {
@@ -1373,6 +1407,12 @@ td small {
 }
 
 @media (max-width: 560px) {
+    input,
+    select,
+    textarea {
+        font-size: 16px;
+    }
+
     .form-grid {
         grid-template-columns: 1fr;
     }
@@ -1382,12 +1422,19 @@ td small {
     }
 
     .admin-tabs {
+        top: 0.35rem;
         width: 100%;
         overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+    .admin-tabs::-webkit-scrollbar {
+        display: none;
     }
 
     .admin-tabs button {
-        flex: 1;
+        flex: 1 0 auto;
+        min-height: 2.8rem;
         white-space: nowrap;
     }
 
@@ -1410,8 +1457,103 @@ td small {
         justify-content: flex-start;
     }
 
+    .panel-actions .button {
+        flex: 1;
+    }
+
+    .form-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .form-actions .button {
+        width: 100%;
+    }
+
+    .toggle-field {
+        align-items: flex-start;
+        padding: 0.85rem;
+    }
+
+    .toggle-field input {
+        flex: none;
+        margin-top: 0.12rem;
+    }
+
+    .weekday-picker span {
+        width: 2.55rem;
+        height: 2.55rem;
+    }
+
+    .metric {
+        padding: 1rem;
+    }
+
+    .metric strong {
+        font-size: clamp(1.65rem, 10vw, 2.35rem);
+    }
+
     .system-status {
         grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 420px) {
+    .app-shell {
+        padding-bottom: 1.5rem;
+    }
+
+    .brand {
+        font-size: 1rem;
+    }
+
+    nav a {
+        padding: 0.62rem 0.7rem;
+        font-size: 0.82rem;
+    }
+
+    .panel {
+        padding: 1rem;
+        border-radius: 1rem;
+    }
+
+    .admin-heading h1 {
+        font-size: 2rem;
+    }
+
+    .admin-heading .lede {
+        font-size: 0.95rem;
+    }
+
+    .list-item {
+        min-height: 4rem;
+        padding: 0.75rem;
+    }
+
+    .list-status {
+        padding-inline: 0.42rem;
+        font-size: 0.68rem;
+    }
+
+    .activity-action {
+        padding: 1.15rem;
+    }
+
+    .activity-card h2 {
+        margin-top: 1.55rem;
+    }
+
+    .deadline-countdown {
+        width: 1.7rem;
+    }
+
+    .metric-grid {
+        gap: 0.65rem;
+    }
+
+    .metric span {
+        font-size: 0.68rem;
+        letter-spacing: 0.055em;
     }
 }
 
