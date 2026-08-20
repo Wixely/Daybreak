@@ -98,6 +98,7 @@ public sealed record Occurrence(
     string? OneOffTaskId,
     string TitleSnapshot,
     string? NotesSnapshot,
+    string ScheduleLabelSnapshot,
     string NominalDate,
     string EffectiveDate,
     string? DeadlineUtc,
@@ -111,7 +112,7 @@ public sealed record Occurrence(
     string CreatedAtUtc)
 {
     public Occurrence() : this(
-        string.Empty, null, null, string.Empty, null, string.Empty, string.Empty,
+        string.Empty, null, null, string.Empty, null, string.Empty, string.Empty, string.Empty,
         null, string.Empty, UrgencyMode.None, 30, OccurrenceState.Pending,
         null, null, 0, string.Empty)
     { }
@@ -121,6 +122,7 @@ public sealed record BoardItem(
     string Id,
     string Title,
     string? Notes,
+    string ScheduleLabel,
     DateOnly NominalDate,
     DateOnly EffectiveDate,
     DateTimeOffset? Deadline,

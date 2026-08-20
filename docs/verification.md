@@ -8,7 +8,7 @@ Last verified: 2026-08-19
 
 - formatting verification;
 - Release build with zero warnings and zero errors;
-- 40 passing Daybreak tests with no failures or skips;
+- 41 passing Daybreak tests with no failures or skips;
 - 669 passing vendored Nager.Date tests, with its network source-validation test skipped;
 - framework-dependent `linux-x64` publish;
 - framework-dependent `linux-arm64` publish;

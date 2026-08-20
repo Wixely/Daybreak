@@ -43,8 +43,10 @@ public sealed class MigrationRunnerTests
         await runner.MigrateAsync();
 
         await using var connection = await _connections.OpenAsync();
-        Assert.AreEqual(1, await connection.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM SchemaMigrations"));
+        Assert.AreEqual(SchemaManifest.CurrentVersion, await connection.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM SchemaMigrations"));
         Assert.AreEqual(SchemaManifest.CurrentVersion, await connection.ExecuteScalarAsync<int>("SELECT MAX(Version) FROM SchemaMigrations"));
+        Assert.AreEqual(1, await connection.ExecuteScalarAsync<int>(
+            "SELECT COUNT(*) FROM pragma_table_info('Occurrences') WHERE name = 'ScheduleLabelSnapshot'"));
     }
 
     [TestMethod]

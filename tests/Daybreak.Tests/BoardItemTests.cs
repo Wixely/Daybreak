@@ -41,6 +41,7 @@ public sealed class BoardItemTests
         "id",
         "Example",
         null,
+        "Daily",
         new DateOnly(2026, 8, 19),
         new DateOnly(2026, 8, 19),
         deadline,

@@ -146,6 +146,7 @@ public sealed class BoardService(
         occurrence.Id,
         occurrence.TitleSnapshot,
         occurrence.NotesSnapshot,
+        occurrence.ScheduleLabelSnapshot,
         DateOnly.Parse(occurrence.NominalDate),
         DateOnly.Parse(occurrence.EffectiveDate),
         occurrence.DeadlineUtc is null ? null : DateTimeOffset.Parse(occurrence.DeadlineUtc),

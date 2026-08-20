@@ -68,6 +68,17 @@ public sealed class RecurrenceCalculatorTests
         Assert.IsTrue(RecurrenceCalculator.OccursOn(activity, new DateOnly(2026, 8, 31)));
     }
 
+    [TestMethod]
+    public void RecurrenceDescriptionsStayShortAndFrequencyOriented()
+    {
+        Assert.AreEqual("Daily", RecurrenceDescription.ForActivity(Create(RecurrenceKind.Daily)));
+        Assert.AreEqual("Selected weekdays", RecurrenceDescription.ForActivity(Create(RecurrenceKind.SelectedWeekdays)));
+        Assert.AreEqual("Weekly", RecurrenceDescription.ForActivity(Create(RecurrenceKind.EveryNDays, interval: 7)));
+        Assert.AreEqual("Every 2 weeks", RecurrenceDescription.ForActivity(Create(RecurrenceKind.EveryNWeeks, interval: 2)));
+        Assert.AreEqual("Roughly monthly", RecurrenceDescription.ForActivity(Create(RecurrenceKind.EveryNWeeks, interval: 4)));
+        Assert.AreEqual("Monthly", RecurrenceDescription.ForActivity(Create(RecurrenceKind.MonthlyDate)));
+    }
+
     private static Activity Create(
         RecurrenceKind kind,
         int interval = 1,

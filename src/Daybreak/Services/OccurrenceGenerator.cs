@@ -170,6 +170,7 @@ public sealed class OccurrenceGenerator(
             ActivityId = activity.Id,
             activity.Title,
             activity.Notes,
+            ScheduleLabel = RecurrenceDescription.ForActivity(activity),
             NominalDate = Format(nominalDate),
             EffectiveDate = Format(effectiveDate),
             DeadlineUtc = deadline?.ToString("O"),
@@ -193,14 +194,15 @@ public sealed class OccurrenceGenerator(
         var actionWindowEnd = ResolveActionWindowEnd(date, task.BleedOverrideMinutes ?? defaultBleedMinutes, timeZone);
         return await connection.ExecuteAsync("""
             INSERT INTO Occurrences (
-                Id, OneOffTaskId, TitleSnapshot, NotesSnapshot, NominalDate, EffectiveDate,
+                Id, OneOffTaskId, TitleSnapshot, NotesSnapshot, ScheduleLabelSnapshot, NominalDate, EffectiveDate,
                 DeadlineUtc, ActionWindowEndUtc, UrgencyMode, WarningMinutes, State, Version, CreatedAtUtc)
             VALUES (
-                @Id, @OneOffTaskId, @Title, @Notes, @NominalDate, @EffectiveDate,
+                @Id, @OneOffTaskId, @Title, @Notes, @ScheduleLabel, @NominalDate, @EffectiveDate,
                 @DeadlineUtc, @ActionWindowEndUtc, @UrgencyMode, @WarningMinutes, 0, 0, @CreatedAtUtc)
             ON CONFLICT(OneOffTaskId) WHERE OneOffTaskId IS NOT NULL DO UPDATE SET
                 TitleSnapshot = excluded.TitleSnapshot,
                 NotesSnapshot = excluded.NotesSnapshot,
+                ScheduleLabelSnapshot = excluded.ScheduleLabelSnapshot,
                 NominalDate = excluded.NominalDate,
                 EffectiveDate = excluded.EffectiveDate,
                 DeadlineUtc = excluded.DeadlineUtc,
@@ -210,6 +212,7 @@ public sealed class OccurrenceGenerator(
             WHERE Occurrences.State = 0 AND (
                 Occurrences.TitleSnapshot IS NOT excluded.TitleSnapshot OR
                 Occurrences.NotesSnapshot IS NOT excluded.NotesSnapshot OR
+                Occurrences.ScheduleLabelSnapshot IS NOT excluded.ScheduleLabelSnapshot OR
                 Occurrences.NominalDate IS NOT excluded.NominalDate OR
                 Occurrences.EffectiveDate IS NOT excluded.EffectiveDate OR
                 Occurrences.DeadlineUtc IS NOT excluded.DeadlineUtc OR
@@ -222,6 +225,7 @@ public sealed class OccurrenceGenerator(
             OneOffTaskId = task.Id,
             task.Title,
             task.Notes,
+            ScheduleLabel = RecurrenceDescription.OneOff,
             NominalDate = Format(date),
             EffectiveDate = Format(date),
             DeadlineUtc = deadline?.ToString("O"),
@@ -234,14 +238,15 @@ public sealed class OccurrenceGenerator(
 
     private const string InsertActivitySql = """
         INSERT INTO Occurrences (
-            Id, ActivityId, TitleSnapshot, NotesSnapshot, NominalDate, EffectiveDate,
+            Id, ActivityId, TitleSnapshot, NotesSnapshot, ScheduleLabelSnapshot, NominalDate, EffectiveDate,
             DeadlineUtc, ActionWindowEndUtc, UrgencyMode, WarningMinutes, State, Version, CreatedAtUtc)
         VALUES (
-            @Id, @ActivityId, @Title, @Notes, @NominalDate, @EffectiveDate,
+            @Id, @ActivityId, @Title, @Notes, @ScheduleLabel, @NominalDate, @EffectiveDate,
             @DeadlineUtc, @ActionWindowEndUtc, @UrgencyMode, @WarningMinutes, 0, 0, @CreatedAtUtc)
         ON CONFLICT(ActivityId, NominalDate) WHERE ActivityId IS NOT NULL DO UPDATE SET
             TitleSnapshot = excluded.TitleSnapshot,
             NotesSnapshot = excluded.NotesSnapshot,
+            ScheduleLabelSnapshot = excluded.ScheduleLabelSnapshot,
             EffectiveDate = excluded.EffectiveDate,
             DeadlineUtc = excluded.DeadlineUtc,
             ActionWindowEndUtc = excluded.ActionWindowEndUtc,
@@ -250,6 +255,7 @@ public sealed class OccurrenceGenerator(
         WHERE Occurrences.State = 0 AND (
             Occurrences.TitleSnapshot IS NOT excluded.TitleSnapshot OR
             Occurrences.NotesSnapshot IS NOT excluded.NotesSnapshot OR
+            Occurrences.ScheduleLabelSnapshot IS NOT excluded.ScheduleLabelSnapshot OR
             Occurrences.EffectiveDate IS NOT excluded.EffectiveDate OR
             Occurrences.DeadlineUtc IS NOT excluded.DeadlineUtc OR
             Occurrences.ActionWindowEndUtc IS NOT excluded.ActionWindowEndUtc OR

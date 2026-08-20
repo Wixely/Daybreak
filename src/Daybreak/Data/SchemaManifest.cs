@@ -4,7 +4,7 @@ public sealed record DatabaseMigration(int Version, string Name, string Sql);
 
 public static class SchemaManifest
 {
-    public const int CurrentVersion = 1;
+    public const int CurrentVersion = 2;
 
     public static IReadOnlyList<DatabaseMigration> Migrations { get; } =
     [
@@ -98,6 +98,33 @@ public static class SchemaManifest
 
             CREATE INDEX IX_OccurrenceEvents_OccurrenceId ON OccurrenceEvents (OccurrenceId, Id);
 
+            """),
+        new(2, "Snapshot recurrence labels", """
+            ALTER TABLE Occurrences
+            ADD COLUMN ScheduleLabelSnapshot TEXT NOT NULL DEFAULT 'Recurring';
+
+            UPDATE Occurrences
+            SET ScheduleLabelSnapshot = CASE
+                WHEN OneOffTaskId IS NOT NULL THEN 'One-off'
+                WHEN ActivityId IS NULL THEN 'Recurring'
+                ELSE COALESCE((
+                    SELECT CASE
+                        WHEN RecurrenceKind = 0 THEN 'Daily'
+                        WHEN RecurrenceKind = 1 THEN 'Selected weekdays'
+                        WHEN RecurrenceKind = 2 AND Interval = 1 THEN 'Daily'
+                        WHEN RecurrenceKind = 2 AND Interval = 7 THEN 'Weekly'
+                        WHEN RecurrenceKind = 2 AND Interval BETWEEN 28 AND 31 THEN 'Roughly monthly'
+                        WHEN RecurrenceKind = 2 THEN 'Every ' || Interval || ' days'
+                        WHEN RecurrenceKind = 3 AND Interval = 1 THEN 'Weekly'
+                        WHEN RecurrenceKind = 3 AND Interval = 4 THEN 'Roughly monthly'
+                        WHEN RecurrenceKind = 3 THEN 'Every ' || Interval || ' weeks'
+                        WHEN RecurrenceKind IN (4, 5) THEN 'Monthly'
+                        ELSE 'Recurring'
+                    END
+                    FROM Activities
+                    WHERE Activities.Id = Occurrences.ActivityId
+                ), 'Recurring')
+            END;
             """),
     ];
 }
