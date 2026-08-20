@@ -13,6 +13,7 @@ Daybreak is a self-hosted household dashboard for recurring activities and one-o
 - Keeps near-midnight work available during a configurable bleed window.
 - Expires unfinished occurrences into history instead of creating a backlog.
 - Synchronizes completion, undo, expiry, rollover, and configuration changes across open browser sessions.
+- Offers an experimental, per-browser keep-awake preference using locally generated silent audio.
 - Adjusts schedules around holidays calculated by a vendored, fully offline Nager.Date provider.
 - Reports completion rate, on-time/late/unfinished results, weekly trends, and per-activity summaries.
 - Protects configuration with one Docker-image password while leaving the dashboard URL open.

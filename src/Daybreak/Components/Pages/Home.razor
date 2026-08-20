@@ -134,6 +134,7 @@ else
         if (!_dashboardBehaviorStarted)
         {
             await _dashboardModule.InvokeVoidAsync("startIdleScroll", 60_000);
+            await _dashboardModule.InvokeVoidAsync("initializeKeepAwake");
             _dashboardBehaviorStarted = true;
         }
 

@@ -2,6 +2,14 @@ let completedSectionObserver;
 let idleTimer;
 let idleTimeout = 60_000;
 const activityEvents = ["pointerdown", "keydown", "wheel", "touchstart", "scroll"];
+const keepAwakeStorageKey = "daybreak.keepAwake";
+const keepAwakeActivationEvents = ["pointerdown", "touchstart", "keydown"];
+const boundKeepAwakeToggles = new WeakSet();
+let keepAwakeAudio;
+let keepAwakeAudioUrl;
+let keepAwakeTimer;
+let keepAwakeRetryListening = false;
+let keepAwakeEnabled;
 
 export function observeCompletedSection(section) {
     disconnectCompletedSection();
@@ -30,6 +38,165 @@ export function startIdleScroll(timeout = 60_000) {
     }
 
     resetIdleTimer();
+}
+
+export function initializeKeepAwake() {
+    if (readKeepAwakePreference()) {
+        void startKeepAwake();
+    }
+}
+
+export function bindKeepAwakeSetting(toggle) {
+    if (!toggle) {
+        return;
+    }
+
+    toggle.checked = readKeepAwakePreference();
+    if (toggle.checked) {
+        void startKeepAwake();
+    }
+
+    if (boundKeepAwakeToggles.has(toggle)) {
+        return;
+    }
+
+    boundKeepAwakeToggles.add(toggle);
+    toggle.addEventListener("change", () => {
+        writeKeepAwakePreference(toggle.checked);
+        if (toggle.checked) {
+            void startKeepAwake();
+        } else {
+            stopKeepAwake();
+        }
+    });
+}
+
+function readKeepAwakePreference() {
+    if (keepAwakeEnabled !== undefined) {
+        return keepAwakeEnabled;
+    }
+
+    try {
+        keepAwakeEnabled = window.localStorage.getItem(keepAwakeStorageKey) === "true";
+    } catch {
+        keepAwakeEnabled = false;
+    }
+
+    return keepAwakeEnabled;
+}
+
+function writeKeepAwakePreference(enabled) {
+    keepAwakeEnabled = enabled;
+    try {
+        window.localStorage.setItem(keepAwakeStorageKey, enabled ? "true" : "false");
+    } catch {
+        // The feature remains usable for this page even when storage is unavailable.
+    }
+}
+
+async function startKeepAwake() {
+    if (!readKeepAwakePreference()) {
+        return;
+    }
+
+    if (!keepAwakeAudio) {
+        keepAwakeAudioUrl = createSilentWaveUrl();
+        keepAwakeAudio = document.createElement("audio");
+        keepAwakeAudio.src = keepAwakeAudioUrl;
+        keepAwakeAudio.loop = true;
+        keepAwakeAudio.preload = "auto";
+        keepAwakeAudio.setAttribute("aria-hidden", "true");
+        keepAwakeAudio.style.display = "none";
+        document.body.appendChild(keepAwakeAudio);
+    }
+
+    try {
+        await keepAwakeAudio.play();
+        stopKeepAwakeRetry();
+        if (!keepAwakeTimer) {
+            keepAwakeTimer = window.setInterval(() => {
+                if (!readKeepAwakePreference()) {
+                    stopKeepAwake();
+                    return;
+                }
+
+                keepAwakeAudio.currentTime = 0;
+                void keepAwakeAudio.play().catch(startKeepAwakeRetry);
+            }, 55_000);
+        }
+    } catch {
+        startKeepAwakeRetry();
+    }
+}
+
+function startKeepAwakeRetry() {
+    if (keepAwakeRetryListening) {
+        return;
+    }
+
+    keepAwakeRetryListening = true;
+    for (const eventName of keepAwakeActivationEvents) {
+        window.addEventListener(eventName, retryKeepAwake, { passive: true });
+    }
+}
+
+function retryKeepAwake() {
+    stopKeepAwakeRetry();
+    void startKeepAwake();
+}
+
+function stopKeepAwakeRetry() {
+    if (!keepAwakeRetryListening) {
+        return;
+    }
+
+    keepAwakeRetryListening = false;
+    for (const eventName of keepAwakeActivationEvents) {
+        window.removeEventListener(eventName, retryKeepAwake);
+    }
+}
+
+function stopKeepAwake() {
+    window.clearInterval(keepAwakeTimer);
+    keepAwakeTimer = undefined;
+    stopKeepAwakeRetry();
+    if (keepAwakeAudio) {
+        keepAwakeAudio.pause();
+        keepAwakeAudio.remove();
+        keepAwakeAudio = undefined;
+    }
+
+    if (keepAwakeAudioUrl) {
+        URL.revokeObjectURL(keepAwakeAudioUrl);
+        keepAwakeAudioUrl = undefined;
+    }
+}
+
+function createSilentWaveUrl() {
+    const sampleRate = 8_000;
+    const sampleCount = sampleRate;
+    const buffer = new ArrayBuffer(44 + sampleCount * 2);
+    const view = new DataView(buffer);
+    writeAscii(view, 0, "RIFF");
+    view.setUint32(4, 36 + sampleCount * 2, true);
+    writeAscii(view, 8, "WAVE");
+    writeAscii(view, 12, "fmt ");
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    writeAscii(view, 36, "data");
+    view.setUint32(40, sampleCount * 2, true);
+    return URL.createObjectURL(new Blob([buffer], { type: "audio/wav" }));
+}
+
+function writeAscii(view, offset, value) {
+    for (let index = 0; index < value.length; index++) {
+        view.setUint8(offset + index, value.charCodeAt(index));
+    }
 }
 
 function resetIdleTimer() {

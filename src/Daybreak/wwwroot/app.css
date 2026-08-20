@@ -774,6 +774,16 @@ textarea {
     min-height: auto;
 }
 
+.toggle-copy {
+    display: grid;
+    gap: 0.18rem;
+}
+
+.toggle-copy small {
+    color: var(--muted);
+    font-weight: 500;
+}
+
 .schedule-preview {
     display: grid;
     gap: 0.3rem;

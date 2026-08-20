@@ -1,5 +1,6 @@
 @page "/admin"
 @attribute [Authorize]
+@implements IAsyncDisposable
 @inject ActivityService Activities
 @inject OneOffTaskService OneOffTasks
 @inject SettingsService Settings
@@ -7,7 +8,9 @@
 @inject HistoryService History
 @inject TimeProvider Clock
 @inject IHolidayProvider HolidayProvider
+@inject IJSRuntime JavaScript
 @using Daybreak.Data
+@using Microsoft.JSInterop
 
 <PageTitle>Configure · Daybreak</PageTitle>
 
@@ -321,6 +324,13 @@ else if (_tab == SettingsTab)
                     </InputSelect>
                     <small>First-level ISO 3166-2 subdivision, when supported by the selected country.</small>
                 </div>
+                <label class="toggle-field span-2" for="keep-awake">
+                    <input id="keep-awake" type="checkbox" @ref="_keepAwakeToggle" />
+                    <span class="toggle-copy">
+                        <strong>Keep awake (Experimental)</strong>
+                        <small>Uses silent local audio to discourage this browser from closing an inactive page. Stored only in this browser.</small>
+                    </span>
+                </label>
             </div>
             <div class="cache-status">
                 <span>Holiday engine</span>
@@ -468,10 +478,23 @@ else
     private string? _message;
     private bool _messageIsError;
     private string _adjustedPreview = "Use the preview to check moved, suppressed, or colliding dates.";
+    private ElementReference _keepAwakeToggle;
+    private IJSObjectReference? _dashboardModule;
     private static string ApplicationVersion => typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "development";
     private IReadOnlyList<HolidaySubdivisionOption> HolidaySubdivisions => HolidayCatalog.GetSubdivisions(_settings.CountryCode);
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_tab != SettingsTab)
+        {
+            return;
+        }
+
+        _dashboardModule ??= await JavaScript.InvokeAsync<IJSObjectReference>("import", "./dashboard.js");
+        await _dashboardModule.InvokeVoidAsync("bindKeepAwakeSetting", _keepAwakeToggle);
+    }
 
     private async Task LoadAsync()
     {
@@ -823,5 +846,19 @@ else
         [Range(0, 720)] public int DefaultBleedMinutes { get; set; } = 120;
         [StringLength(2, MinimumLength = 2)] public string? CountryCode { get; set; }
         [StringLength(12)] public string? SubdivisionCode { get; set; }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_dashboardModule is not null)
+        {
+            try
+            {
+                await _dashboardModule.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+            }
+        }
     }
 }

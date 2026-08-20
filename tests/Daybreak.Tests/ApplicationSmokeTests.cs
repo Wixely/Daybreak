@@ -87,6 +87,9 @@ public sealed partial class ApplicationSmokeTests
         StringAssert.Contains(behaviorScript, "is-revealed");
         StringAssert.Contains(behaviorScript, "scrollTo");
         StringAssert.Contains(behaviorScript, "60_000");
+        StringAssert.Contains(behaviorScript, "daybreak.keepAwake");
+        StringAssert.Contains(behaviorScript, "localStorage");
+        StringAssert.Contains(behaviorScript, "audio/wav");
     }
 
     [TestMethod]
