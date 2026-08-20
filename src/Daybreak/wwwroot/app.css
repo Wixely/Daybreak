@@ -220,7 +220,7 @@ h1 {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 340px));
     gap: clamp(0.65rem, 1vw, 1rem);
-    justify-content: start;
+    justify-content: center;
 }
 
 .completed-activities {
@@ -1388,10 +1388,6 @@ td small {
     .activity-card,
     .activity-action {
         min-height: 210px;
-    }
-
-    .kiosk-shell .activity-grid {
-        justify-content: center;
     }
 
     .dashboard-primary {
