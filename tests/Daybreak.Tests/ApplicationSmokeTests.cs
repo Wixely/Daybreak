@@ -55,7 +55,8 @@ public sealed partial class ApplicationSmokeTests
         Assert.AreEqual(HttpStatusCode.OK, dashboard.StatusCode);
         var dashboardHtml = await dashboard.Content.ReadAsStringAsync();
         StringAssert.Contains(dashboardHtml, "Daybreak");
-        StringAssert.Contains(dashboardHtml, "Take vitamins");
+        StringAssert.Contains(dashboardHtml, "Take morning vitamins");
+        StringAssert.Contains(dashboardHtml, "Collect the parcel");
         StringAssert.Contains(dashboardHtml, "Daily");
         Assert.IsFalse(dashboardHtml.Contains("Tap when complete", StringComparison.Ordinal));
         StringAssert.Contains(dashboardHtml, "dashboard-brand-link");
@@ -63,6 +64,23 @@ public sealed partial class ApplicationSmokeTests
         Assert.IsFalse(dashboardHtml.Contains("<p class=\"eyebrow\">Today</p>", StringComparison.Ordinal));
         Assert.IsFalse(dashboardHtml.Contains("tabindex=\"-1\"", StringComparison.Ordinal));
         Assert.AreEqual(HttpStatusCode.OK, health.StatusCode);
+    }
+
+    [TestMethod]
+    public async Task DemoDataIncludesAFullBoardAndVariedHistory()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var board = scope.ServiceProvider.GetRequiredService<Daybreak.Services.BoardService>();
+        var history = scope.ServiceProvider.GetRequiredService<Daybreak.Services.HistoryService>();
+
+        var boardSnapshot = await board.GetSnapshotAsync();
+        var historySnapshot = await history.GetAsync();
+
+        Assert.AreEqual(16, boardSnapshot.Items.Count);
+        Assert.IsGreaterThan(100, historySnapshot.Total);
+        Assert.IsGreaterThan(0, historySnapshot.OnTime);
+        Assert.IsGreaterThan(0, historySnapshot.Late);
+        Assert.IsGreaterThan(0, historySnapshot.Unfinished);
     }
 
     [TestMethod]
@@ -118,7 +136,7 @@ public sealed partial class ApplicationSmokeTests
         Assert.AreEqual(HttpStatusCode.OK, admin.StatusCode);
         var adminHtml = await admin.Content.ReadAsStringAsync();
         StringAssert.Contains(adminHtml, "Configure Daybreak");
-        StringAssert.Contains(adminHtml, "Take vitamins");
+        StringAssert.Contains(adminHtml, "Take morning vitamins");
         StringAssert.Contains(adminHtml, "admin-heading");
         StringAssert.Contains(adminHtml, "catalog-panel");
         StringAssert.Contains(adminHtml, "aria-pressed");
