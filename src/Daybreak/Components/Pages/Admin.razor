@@ -14,7 +14,7 @@
 
 <PageTitle>Configure · Daybreak</PageTitle>
 
-<section class="page-heading">
+<section class="page-heading admin-heading">
     <div>
         <p class="eyebrow">Administration</p>
         <h1>Configure Daybreak</h1>
@@ -32,10 +32,10 @@
 }
 
 <nav class="admin-tabs" aria-label="Configuration sections">
-    <button class="@TabClass(ActivitiesTab)" @onclick="ShowActivities">Activities</button>
-    <button class="@TabClass(OneOffsTab)" @onclick="ShowOneOffs">One-off tasks</button>
-    <button class="@TabClass(SettingsTab)" @onclick="ShowSettings">Settings</button>
-    <button class="@TabClass(HistoryTab)" @onclick="ShowHistory">History</button>
+    <button class="@TabClass(ActivitiesTab)" type="button" aria-pressed="@(_tab == ActivitiesTab)" @onclick="ShowActivities">Activities</button>
+    <button class="@TabClass(OneOffsTab)" type="button" aria-pressed="@(_tab == OneOffsTab)" @onclick="ShowOneOffs">One-off tasks</button>
+    <button class="@TabClass(SettingsTab)" type="button" aria-pressed="@(_tab == SettingsTab)" @onclick="ShowSettings">Settings</button>
+    <button class="@TabClass(HistoryTab)" type="button" aria-pressed="@(_tab == HistoryTab)" @onclick="ShowHistory">History</button>
 </nav>
 
 @if (_loading)
@@ -45,7 +45,7 @@
 else if (_tab == "activities")
 {
     <div class="admin-grid">
-        <section class="panel">
+        <section class="panel catalog-panel">
             <div class="panel-heading">
                 <div>
                     <p class="eyebrow">Recurring</p>
@@ -70,7 +70,7 @@ else if (_tab == "activities")
                                 <strong>@activity.Title</strong>
                                 <small>@ScheduleSummary(activity)</small>
                             </span>
-                            <span class="list-status">@(activity.ArchivedAtUtc is not null ? "Archived" : activity.IsPaused ? "Paused" : "Active")</span>
+                            <span class="list-status @(activity.ArchivedAtUtc is not null ? "archived" : activity.IsPaused ? "paused" : "active")">@(activity.ArchivedAtUtc is not null ? "Archived" : activity.IsPaused ? "Paused" : "Active")</span>
                         </button>
                     }
                 </div>
@@ -82,7 +82,7 @@ else if (_tab == "activities")
             <h2>@(_activity.Id is null ? "Add a routine" : _activity.Title)</h2>
             <EditForm Model="_activity" OnValidSubmit="SaveActivityAsync" FormName="activity-editor" @key="_activity">
                 <DataAnnotationsValidator />
-                <ValidationSummary />
+                <ValidationSummary class="validation-summary" />
                 <div class="form-grid">
                     <div class="field span-2">
                         <label for="activity-title">Title</label>
@@ -222,7 +222,7 @@ else if (_tab == "activities")
 else if (_tab == "one-offs")
 {
     <div class="admin-grid">
-        <section class="panel">
+        <section class="panel catalog-panel">
             <div class="panel-heading">
                 <div><p class="eyebrow">Single date</p><h2>One-off tasks</h2></div>
                 <button class="button button-secondary" type="button" @onclick="NewOneOff">New</button>
@@ -248,7 +248,7 @@ else if (_tab == "one-offs")
             <h2>@(_oneOff.Id is null ? "Add a task" : _oneOff.Title)</h2>
             <EditForm Model="_oneOff" OnValidSubmit="SaveOneOffAsync" FormName="one-off-editor" @key="_oneOff">
                 <DataAnnotationsValidator />
-                <ValidationSummary />
+                <ValidationSummary class="validation-summary" />
                 <div class="form-grid">
                     <div class="field span-2"><label for="one-title">Title</label><InputText id="one-title" @bind-Value="_oneOff.Title" /></div>
                     <div class="field span-2"><label for="one-notes">Notes</label><InputTextArea id="one-notes" @bind-Value="_oneOff.Notes" /></div>
@@ -291,7 +291,7 @@ else if (_tab == SettingsTab)
         <h2>Settings</h2>
         <EditForm Model="_settings" OnValidSubmit="SaveSettingsAsync" FormName="settings-editor">
             <DataAnnotationsValidator />
-            <ValidationSummary />
+            <ValidationSummary class="validation-summary" />
             <div class="form-grid">
                 <div class="field span-2">
                     <label for="timezone">IANA time zone</label>

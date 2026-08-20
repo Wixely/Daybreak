@@ -119,6 +119,9 @@ public sealed partial class ApplicationSmokeTests
         var adminHtml = await admin.Content.ReadAsStringAsync();
         StringAssert.Contains(adminHtml, "Configure Daybreak");
         StringAssert.Contains(adminHtml, "Take vitamins");
+        StringAssert.Contains(adminHtml, "admin-heading");
+        StringAssert.Contains(adminHtml, "catalog-panel");
+        StringAssert.Contains(adminHtml, "aria-pressed");
     }
 
     [TestMethod]

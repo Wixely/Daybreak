@@ -502,6 +502,20 @@ button.activity-action:active {
     cursor: pointer;
     font-weight: 780;
     text-decoration: none;
+    transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+
+.button:hover:not(:disabled) {
+    transform: translateY(-1px);
+}
+
+.button:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.button:disabled {
+    cursor: not-allowed;
+    opacity: 0.48;
 }
 
 .button-primary {
@@ -545,6 +559,28 @@ textarea {
     border-radius: 0.7rem;
     background: #0c1425;
     color: var(--ink);
+    transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+}
+
+input:hover:not(:disabled),
+select:hover:not(:disabled),
+textarea:hover:not(:disabled) {
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    border-color: rgba(169, 215, 255, 0.72);
+    background: #0e182b;
+    box-shadow: 0 0 0 3px rgba(169, 215, 255, 0.1);
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
 }
 
 textarea {
@@ -558,6 +594,7 @@ textarea {
 }
 
 .alert {
+    margin-bottom: 1rem;
     padding: 0.8rem 1rem;
     border-radius: 0.75rem;
 }
@@ -575,13 +612,18 @@ textarea {
 }
 
 .admin-tabs {
+    position: sticky;
+    z-index: 20;
+    top: 0.5rem;
     display: flex;
     width: fit-content;
     margin-bottom: 1.25rem;
     padding: 0.3rem;
     border: 1px solid var(--line);
     border-radius: 0.95rem;
-    background: rgba(17, 26, 44, 0.72);
+    background: rgba(12, 20, 37, 0.88);
+    box-shadow: 0 10px 32px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(16px);
 }
 
 .admin-tabs button {
@@ -594,12 +636,31 @@ textarea {
     cursor: pointer;
     font-size: 0.85rem;
     font-weight: 750;
+    transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.admin-tabs button:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.045);
+    color: var(--ink);
 }
 
 .admin-tabs button.active {
-    background: var(--surface-raised);
+    background: linear-gradient(145deg, #24334e, var(--surface-raised));
     color: var(--ink);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+    box-shadow: 0 5px 18px rgba(0, 0, 0, 0.28), inset 0 0 0 1px rgba(255, 189, 91, 0.12);
+}
+
+.admin-heading {
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.admin-heading h1 {
+    font-size: clamp(2rem, 4vw, 3.4rem);
+}
+
+.admin-heading .eyebrow {
+    margin-bottom: 0.4rem;
 }
 
 .admin-grid {
@@ -613,7 +674,33 @@ textarea {
     padding: clamp(1.2rem, 3vw, 2rem);
     border: 1px solid var(--line);
     border-radius: 1.25rem;
-    background: rgba(17, 26, 44, 0.82);
+    background:
+        linear-gradient(145deg, rgba(25, 38, 62, 0.84), rgba(14, 23, 40, 0.9));
+    box-shadow: 0 22px 70px rgba(0, 0, 0, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.admin-grid,
+.settings-panel,
+.history-section {
+    animation: configuration-enter 220ms ease-out both;
+}
+
+.catalog-panel {
+    position: sticky;
+    top: 4.6rem;
+    max-height: calc(100vh - 5.6rem);
+    overflow: auto;
+    scrollbar-color: rgba(255, 189, 91, 0.28) transparent;
+}
+
+.editor-panel {
+    border-color: rgba(255, 255, 255, 0.13);
+}
+
+.editor-panel > h2,
+.settings-panel > h2 {
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--line);
 }
 
 .panel-heading {
@@ -657,6 +744,7 @@ textarea {
 }
 
 .list-item {
+    position: relative;
     width: 100%;
     min-height: 4.4rem;
     display: flex;
@@ -670,12 +758,23 @@ textarea {
     color: var(--ink);
     cursor: pointer;
     text-align: left;
+    transition: border-color 150ms ease, background-color 150ms ease, transform 150ms ease, box-shadow 150ms ease;
 }
 
 .list-item:hover,
 .list-item.selected {
     border-color: rgba(255, 189, 91, 0.35);
     background: rgba(255, 189, 91, 0.07);
+}
+
+.list-item:hover {
+    transform: translateX(2px);
+}
+
+.list-item.selected {
+    border-color: rgba(255, 189, 91, 0.5);
+    background: linear-gradient(100deg, rgba(255, 189, 91, 0.13), rgba(255, 189, 91, 0.045));
+    box-shadow: inset 3px 0 0 var(--sun), 0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
 .list-item > span:first-child {
@@ -693,18 +792,38 @@ textarea {
     padding: 0.28rem 0.5rem;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.06);
+    font-weight: 760;
+}
+
+.list-status.active {
+    background: rgba(117, 214, 175, 0.11);
+    color: var(--mint);
+}
+
+.list-status.paused {
+    background: rgba(255, 189, 91, 0.11);
+    color: var(--sun-bright);
+}
+
+.list-status.archived {
+    opacity: 0.72;
 }
 
 .form-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1rem;
+    gap: 1.1rem 1rem;
 }
 
 .field {
     display: grid;
     align-content: start;
     gap: 0.42rem;
+}
+
+.field > label,
+.weekday-picker legend {
+    color: #cbd1dd;
 }
 
 .span-2 {
@@ -767,6 +886,12 @@ textarea {
     border-radius: 0.7rem;
     background: #0c1425;
     cursor: pointer;
+    transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+.toggle-field:hover {
+    border-color: rgba(255, 189, 91, 0.3);
+    background: rgba(255, 189, 91, 0.035);
 }
 
 .toggle-field input {
@@ -830,6 +955,8 @@ textarea {
     flex-wrap: wrap;
     gap: 0.75rem;
     margin-top: 1.2rem;
+    padding-top: 1.2rem;
+    border-top: 1px solid var(--line);
 }
 
 .button-danger {
@@ -843,8 +970,25 @@ textarea {
     color: #ffadb5;
 }
 
+.validation-summary:empty {
+    display: none;
+}
+
+.validation-summary:not(:empty) {
+    margin-bottom: 1rem;
+    padding: 0.8rem 1rem;
+    border: 1px solid rgba(255, 77, 94, 0.35);
+    border-radius: 0.75rem;
+    background: rgba(99, 29, 43, 0.35);
+}
+
+.validation-summary ul {
+    margin: 0;
+    padding-left: 1.1rem;
+}
+
 .settings-panel {
-    width: min(760px, 100%);
+    width: min(900px, 100%);
 }
 
 .cache-status {
@@ -882,6 +1026,7 @@ textarea {
     padding: 0.8rem;
     border: 1px solid var(--line);
     border-radius: 0.7rem;
+    background: rgba(9, 15, 28, 0.28);
 }
 
 .system-status span {
@@ -913,7 +1058,8 @@ textarea {
     padding: 1.2rem;
     border: 1px solid var(--line);
     border-radius: 1rem;
-    background: rgba(17, 26, 44, 0.82);
+    background: linear-gradient(145deg, rgba(24, 37, 60, 0.84), rgba(14, 23, 40, 0.9));
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12);
 }
 
 .metric span,
@@ -1014,6 +1160,8 @@ textarea {
 
 .history-table-wrap {
     overflow-x: auto;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 0.8rem;
 }
 
 table {
@@ -1029,10 +1177,19 @@ td {
 }
 
 th {
+    background: rgba(8, 14, 27, 0.28);
     color: var(--muted);
     font-size: 0.7rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
+}
+
+tbody tr {
+    transition: background-color 140ms ease;
+}
+
+tbody tr:hover {
+    background: rgba(255, 255, 255, 0.025);
 }
 
 td {
@@ -1143,6 +1300,11 @@ td small {
     to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+@keyframes configuration-enter {
+    from { opacity: 0; transform: translateY(0.35rem); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 @keyframes completed-card-arrive {
     from { transform: translateY(-1.5rem) scale(0.98); }
     to { transform: translateY(0) scale(1); }
@@ -1196,6 +1358,11 @@ td small {
         grid-template-columns: 1fr;
     }
 
+    .catalog-panel {
+        position: static;
+        max-height: none;
+    }
+
     .metric-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -1222,6 +1389,25 @@ td small {
     .admin-tabs button {
         flex: 1;
         white-space: nowrap;
+    }
+
+    .admin-heading {
+        align-items: stretch;
+    }
+
+    .admin-heading form,
+    .admin-heading .button {
+        width: 100%;
+    }
+
+    .panel-heading {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .panel-actions {
+        width: 100%;
+        justify-content: flex-start;
     }
 
     .system-status {
