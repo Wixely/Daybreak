@@ -49,8 +49,8 @@ else if (_tab == "activities")
                     <h2>Activities</h2>
                 </div>
                 <div class="panel-actions">
-                    <button class="button button-secondary" @onclick="ToggleArchivedAsync">@(_showArchived ? "Hide archived" : "Show archived")</button>
-                    <button class="button button-secondary" @onclick="NewActivity">New</button>
+                    <button class="button button-secondary" type="button" @onclick="ToggleArchivedAsync">@(_showArchived ? "Hide archived" : "Show archived")</button>
+                    <button class="button button-secondary" type="button" @onclick="NewActivity">New</button>
                 </div>
             </div>
             @if (_activities.Count == 0)
@@ -62,7 +62,7 @@ else if (_tab == "activities")
                 <div class="item-list">
                     @foreach (var activity in _activities)
                     {
-                        <button class="list-item @(_activity.Id == activity.Id ? "selected" : null)" @onclick="() => EditActivity(activity)">
+                        <button class="list-item @(_activity.Id == activity.Id ? "selected" : null)" type="button" @onclick="() => EditActivity(activity)">
                             <span>
                                 <strong>@activity.Title</strong>
                                 <small>@ScheduleSummary(activity)</small>
@@ -77,7 +77,7 @@ else if (_tab == "activities")
         <section class="panel editor-panel">
             <p class="eyebrow">@(_activity.Id is null ? "New activity" : "Edit activity")</p>
             <h2>@(_activity.Id is null ? "Add a routine" : _activity.Title)</h2>
-            <EditForm Model="_activity" OnValidSubmit="SaveActivityAsync" FormName="activity-editor">
+            <EditForm Model="_activity" OnValidSubmit="SaveActivityAsync" FormName="activity-editor" @key="_activity">
                 <DataAnnotationsValidator />
                 <ValidationSummary />
                 <div class="form-grid">
@@ -147,15 +147,15 @@ else if (_tab == "activities")
                     }
                     <div class="field">
                         <label for="start-date">Starts</label>
-                        <input id="start-date" type="date" value="@_activity.StartDate" @onchange="SetActivityStartDate" />
+                        <InputText id="start-date" type="date" @bind-Value="_activity.StartDate" />
                     </div>
                     <div class="field">
                         <label for="end-date">Ends (optional)</label>
-                        <input id="end-date" type="date" value="@_activity.EndDate" @onchange="SetActivityEndDate" />
+                        <InputText id="end-date" type="date" @bind-Value="_activity.EndDate" />
                     </div>
                     <div class="field">
                         <label for="deadline">Deadline (optional)</label>
-                        <input id="deadline" type="time" value="@_activity.DeadlineTime" @onchange="SetActivityDeadline" />
+                        <InputText id="deadline" type="time" @bind-Value="_activity.DeadlineTime" />
                     </div>
                     <div class="field">
                         <label for="urgency">Urgency</label>
@@ -217,7 +217,7 @@ else if (_tab == "one-offs")
         <section class="panel">
             <div class="panel-heading">
                 <div><p class="eyebrow">Single date</p><h2>One-off tasks</h2></div>
-                <button class="button button-secondary" @onclick="NewOneOff">New</button>
+                <button class="button button-secondary" type="button" @onclick="NewOneOff">New</button>
             </div>
             @if (_oneOffTasks.Count == 0)
             {
@@ -228,7 +228,7 @@ else if (_tab == "one-offs")
                 <div class="item-list">
                     @foreach (var task in _oneOffTasks)
                     {
-                        <button class="list-item @(_oneOff.Id == task.Id ? "selected" : null)" @onclick="() => EditOneOff(task)">
+                        <button class="list-item @(_oneOff.Id == task.Id ? "selected" : null)" type="button" @onclick="() => EditOneOff(task)">
                             <span><strong>@task.Title</strong><small>@DateOnly.Parse(task.ScheduledDate).ToString("ddd, d MMM yyyy")</small></span>
                         </button>
                     }
@@ -238,14 +238,14 @@ else if (_tab == "one-offs")
         <section class="panel editor-panel">
             <p class="eyebrow">@(_oneOff.Id is null ? "New one-off" : "Edit one-off")</p>
             <h2>@(_oneOff.Id is null ? "Add a task" : _oneOff.Title)</h2>
-            <EditForm Model="_oneOff" OnValidSubmit="SaveOneOffAsync" FormName="one-off-editor">
+            <EditForm Model="_oneOff" OnValidSubmit="SaveOneOffAsync" FormName="one-off-editor" @key="_oneOff">
                 <DataAnnotationsValidator />
                 <ValidationSummary />
                 <div class="form-grid">
                     <div class="field span-2"><label for="one-title">Title</label><InputText id="one-title" @bind-Value="_oneOff.Title" /></div>
                     <div class="field span-2"><label for="one-notes">Notes</label><InputTextArea id="one-notes" @bind-Value="_oneOff.Notes" /></div>
-                    <div class="field"><label for="one-date">Date</label><input id="one-date" type="date" value="@_oneOff.ScheduledDate" @onchange="SetOneOffDate" /></div>
-                    <div class="field"><label for="one-deadline">Deadline (optional)</label><input id="one-deadline" type="time" value="@_oneOff.DeadlineTime" @onchange="SetOneOffDeadline" /></div>
+                    <div class="field"><label for="one-date">Date</label><InputText id="one-date" type="date" @bind-Value="_oneOff.ScheduledDate" /></div>
+                    <div class="field"><label for="one-deadline">Deadline (optional)</label><InputText id="one-deadline" type="time" @bind-Value="_oneOff.DeadlineTime" /></div>
                     <div class="field">
                         <label for="one-urgency">Urgency</label>
                         <InputSelect id="one-urgency" @bind-Value="_oneOff.UrgencyMode">
@@ -476,11 +476,6 @@ else
         _history = await History.GetAsync();
         _tab = HistoryTab;
     }
-    private void SetActivityStartDate(ChangeEventArgs args) => _activity.StartDate = args.Value?.ToString() ?? string.Empty;
-    private void SetActivityEndDate(ChangeEventArgs args) => _activity.EndDate = args.Value?.ToString();
-    private void SetActivityDeadline(ChangeEventArgs args) => _activity.DeadlineTime = args.Value?.ToString();
-    private void SetOneOffDate(ChangeEventArgs args) => _oneOff.ScheduledDate = args.Value?.ToString() ?? string.Empty;
-    private void SetOneOffDeadline(ChangeEventArgs args) => _oneOff.DeadlineTime = args.Value?.ToString();
     private void NewActivity() => _activity = ActivityForm.Create(HouseholdToday);
     private void NewOneOff() => _oneOff = OneOffForm.Create(HouseholdToday);
     private void EditActivity(Activity activity) => _activity = ActivityForm.From(activity);
