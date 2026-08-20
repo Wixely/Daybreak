@@ -20,6 +20,19 @@ public sealed class SettingsService(DatabaseConnectionFactory connections, Board
             throw new ArgumentOutOfRangeException(nameof(defaultBleedMinutes));
         }
 
+        countryCode = NullIfBlank(countryCode)?.ToUpperInvariant();
+        subdivisionCode = NullIfBlank(subdivisionCode)?.ToUpperInvariant();
+        if (countryCode is not null && !HolidayCatalog.IsSupportedCountry(countryCode))
+        {
+            throw new ArgumentException("Choose a country supported by the bundled holiday engine.", nameof(countryCode));
+        }
+
+        if (subdivisionCode is not null &&
+            (countryCode is null || !HolidayCatalog.IsSupportedSubdivision(countryCode, subdivisionCode)))
+        {
+            throw new ArgumentException("Choose a subdivision supported for the selected country.", nameof(subdivisionCode));
+        }
+
         await using var connection = await connections.OpenAsync();
         var revision = await connection.ExecuteScalarAsync<long>("""
             UPDATE HouseholdSettings
@@ -34,8 +47,8 @@ public sealed class SettingsService(DatabaseConnectionFactory connections, Board
         {
             TimeZoneId = timeZoneId,
             DefaultBleedMinutes = defaultBleedMinutes,
-            CountryCode = NullIfBlank(countryCode)?.ToUpperInvariant(),
-            SubdivisionCode = NullIfBlank(subdivisionCode)?.ToUpperInvariant(),
+            CountryCode = countryCode,
+            SubdivisionCode = subdivisionCode,
         });
         await changes.NotifyAsync(revision);
     }

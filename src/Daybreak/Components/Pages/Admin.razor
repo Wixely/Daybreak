@@ -299,8 +299,28 @@ else if (_tab == SettingsTab)
                     <label for="global-bleed">Default midnight bleed (minutes)</label>
                     <InputNumber id="global-bleed" @bind-Value="_settings.DefaultBleedMinutes" />
                 </div>
-                <div class="field"><label for="country">Holiday country code</label><InputText id="country" @bind-Value="_settings.CountryCode" placeholder="GB" /></div>
-                <div class="field"><label for="subdivision">Holiday subdivision</label><InputText id="subdivision" @bind-Value="_settings.SubdivisionCode" placeholder="GB-ENG" /></div>
+                <div class="field">
+                    <label for="country">Holiday country</label>
+                    <InputSelect id="country" @bind-Value="_settings.CountryCode" @bind-Value:after="HolidayCountryChanged">
+                        <option value="">No holiday calendar</option>
+                        @foreach (var country in HolidayCatalog.Countries)
+                        {
+                            <option value="@country.Code">@country.Name (@country.Code)</option>
+                        }
+                    </InputSelect>
+                    <small>Two-letter ISO 3166-1 countries supported by the bundled Nager version.</small>
+                </div>
+                <div class="field">
+                    <label for="subdivision">Holiday subdivision</label>
+                    <InputSelect id="subdivision" @bind-Value="_settings.SubdivisionCode" disabled="@(HolidaySubdivisions.Count == 0)">
+                        <option value="">National holidays only</option>
+                        @foreach (var subdivision in HolidaySubdivisions)
+                        {
+                            <option value="@subdivision.Code">@subdivision.Name (@subdivision.Code)</option>
+                        }
+                    </InputSelect>
+                    <small>First-level ISO 3166-2 subdivision, when supported by the selected country.</small>
+                </div>
             </div>
             <div class="cache-status">
                 <span>Holiday engine</span>
@@ -449,6 +469,7 @@ else
     private bool _messageIsError;
     private string _adjustedPreview = "Use the preview to check moved, suppressed, or colliding dates.";
     private static string ApplicationVersion => typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "development";
+    private IReadOnlyList<HolidaySubdivisionOption> HolidaySubdivisions => HolidayCatalog.GetSubdivisions(_settings.CountryCode);
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
@@ -481,6 +502,16 @@ else
     private void ShowActivities() => _tab = ActivitiesTab;
     private void ShowOneOffs() => _tab = OneOffsTab;
     private void ShowSettings() => _tab = SettingsTab;
+    private void HolidayCountryChanged()
+    {
+        _settings.CountryCode = string.IsNullOrWhiteSpace(_settings.CountryCode) ? null : _settings.CountryCode;
+        if (_settings.CountryCode is null ||
+            string.IsNullOrWhiteSpace(_settings.SubdivisionCode) ||
+            !HolidayCatalog.IsSupportedSubdivision(_settings.CountryCode, _settings.SubdivisionCode))
+        {
+            _settings.SubdivisionCode = null;
+        }
+    }
     private async Task ShowHistory()
     {
         _history = await History.GetAsync();

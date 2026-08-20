@@ -54,4 +54,22 @@ public sealed class NagerDateHolidayProviderTests
         await Assert.ThrowsExactlyAsync<OperationCanceledException>(
             () => _provider.GetHolidayDatesAsync(2026, "GB", null, cancellation.Token));
     }
+
+    [TestMethod]
+    public void HolidayCatalogOnlyIncludesCountriesBackedByBundledProviders()
+    {
+        Assert.IsTrue(HolidayCatalog.Countries.Any(item => item.Code == "GB"));
+        Assert.IsFalse(HolidayCatalog.Countries.Any(item => item.Code == "XX"));
+    }
+
+    [TestMethod]
+    public void HolidayCatalogReturnsNamedSubdivisionsForSelectedCountry()
+    {
+        var subdivisions = HolidayCatalog.GetSubdivisions("GB");
+
+        Assert.HasCount(4, subdivisions);
+        Assert.IsTrue(subdivisions.Any(item => item.Code == "GB-ENG" && item.Name == "England"));
+        Assert.IsTrue(HolidayCatalog.IsSupportedSubdivision("GB", "gb-sct"));
+        Assert.IsFalse(HolidayCatalog.IsSupportedSubdivision("GB", "US-CA"));
+    }
 }
