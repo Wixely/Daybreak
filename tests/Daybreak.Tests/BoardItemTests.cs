@@ -37,6 +37,18 @@ public sealed class BoardItemTests
         Assert.AreEqual(1d, DeadlineCountdown.Progress(deadline.AddMinutes(10), deadline));
     }
 
+    [TestMethod]
+    [DataRow(20, "About 20 minutes")]
+    [DataRow(62, "About an hour")]
+    [DataRow(190, "About 3 hours")]
+    [DataRow(2880, "About 2 days")]
+    public void DeadlineEstimateUsesReadableRoundedDurations(int minutes, string expected)
+    {
+        var now = new DateTimeOffset(2026, 8, 19, 12, 0, 0, TimeSpan.Zero);
+
+        Assert.AreEqual(expected, DeadlineEstimate.Format(now, now.AddMinutes(minutes)));
+    }
+
     private static BoardItem CreateItem(UrgencyMode urgencyMode, DateTimeOffset deadline) => new(
         "id",
         "Example",

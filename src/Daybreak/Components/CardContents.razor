@@ -15,13 +15,9 @@
         {
             <span class="status-badge @(Item.IsUrgent(Now) ? "overdue" : "past")">Past deadline</span>
         }
-        else if (Item.IsDueSoon(Now))
-        {
-            <span class="status-badge soon">Due soon</span>
-        }
         else
         {
-            <span class="status-badge todo">To do</span>
+            <span class="status-badge @(Item.IsDueSoon(Now) ? "soon" : "todo")">@DeadlineEstimate.Format(Now, Item.Deadline)</span>
         }
         @if (Item.NominalDate != Item.EffectiveDate)
         {
