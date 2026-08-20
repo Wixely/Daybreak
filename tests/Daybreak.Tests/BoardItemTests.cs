@@ -42,6 +42,8 @@ public sealed class BoardItemTests
     [DataRow(62, "About an hour")]
     [DataRow(190, "About 3 hours")]
     [DataRow(2880, "About 2 days")]
+    [DataRow(-20, "About 20 minutes ago")]
+    [DataRow(-62, "About an hour ago")]
     public void DeadlineEstimateUsesReadableRoundedDurations(int minutes, string expected)
     {
         var now = new DateTimeOffset(2026, 8, 19, 12, 0, 0, TimeSpan.Zero);

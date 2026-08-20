@@ -13,7 +13,7 @@
         }
         else if (Item.IsOverdue(Now))
         {
-            <span class="status-badge @(Item.IsUrgent(Now) ? "overdue" : "past")">Past deadline</span>
+            <span class="status-badge @(Item.IsUrgent(Now) ? "overdue" : "past")">@DeadlineEstimate.Format(Now, Item.Deadline)</span>
         }
         else
         {

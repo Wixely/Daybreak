@@ -12,9 +12,14 @@ public static class DeadlineEstimate
         var remaining = deadline.Value - now;
         if (remaining <= TimeSpan.Zero)
         {
-            return "Deadline reached";
+            return $"{FormatDuration(-remaining)} ago";
         }
 
+        return FormatDuration(remaining);
+    }
+
+    private static string FormatDuration(TimeSpan remaining)
+    {
         if (remaining.TotalMinutes < 1)
         {
             return "Less than a minute";
