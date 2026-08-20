@@ -177,6 +177,11 @@ else if (_tab == "activities")
                         <InputNumber id="bleed" @bind-Value="_activity.BleedOverrideMinutes" placeholder="Use global" />
                     </div>
                     <div class="field">
+                        <label for="show-ahead">Show early (hours)</label>
+                        <InputNumber id="show-ahead" @bind-Value="_activity.ShowAheadHours" />
+                        <small>0 shows it on the scheduled day; higher values allow completion earlier.</small>
+                    </div>
+                    <div class="field">
                         <label for="holiday-policy">On a holiday</label>
                         <InputSelect id="holiday-policy" @bind-Value="_activity.HolidayPolicy">
                             @foreach (var policy in Enum.GetValues<HolidayPolicy>())
@@ -259,6 +264,11 @@ else if (_tab == "one-offs")
                         <div class="field"><label for="one-warning">Warning minutes</label><InputNumber id="one-warning" @bind-Value="_oneOff.WarningMinutes" /></div>
                     }
                     <div class="field"><label for="one-bleed">Bleed override in minutes</label><InputNumber id="one-bleed" @bind-Value="_oneOff.BleedOverrideMinutes" placeholder="Use global" /></div>
+                    <div class="field">
+                        <label for="one-show-ahead">Show early (hours)</label>
+                        <InputNumber id="one-show-ahead" @bind-Value="_oneOff.ShowAheadHours" />
+                        <small>0 shows it on the scheduled day; higher values allow completion earlier.</small>
+                    </div>
                 </div>
                 <div class="form-actions">
                     <button class="button button-primary" type="submit" disabled="@_saving">Save one-off task</button>
@@ -724,6 +734,7 @@ else
         public UrgencyMode UrgencyMode { get; set; }
         [Range(0, 1440)] public int WarningMinutes { get; set; } = 30;
         [Range(0, 720)] public int? BleedOverrideMinutes { get; set; }
+        [Range(0, 168)] public int ShowAheadHours { get; set; }
         public HolidayPolicy HolidayPolicy { get; set; }
         public bool IsPaused { get; set; }
         public string? ArchivedAtUtc { get; set; }
@@ -738,14 +749,14 @@ else
             Ordinal = value.Ordinal, Weekday = value.Weekday, StartDate = value.StartDate, EndDate = value.EndDate,
             DeadlineTime = FormatTime(value.DeadlineMinutes), UrgencyMode = value.UrgencyMode,
             WarningMinutes = value.WarningMinutes, BleedOverrideMinutes = value.BleedOverrideMinutes,
-            HolidayPolicy = value.HolidayPolicy, IsPaused = value.IsPaused, ArchivedAtUtc = value.ArchivedAtUtc,
+            ShowAheadHours = value.ShowAheadHours, HolidayPolicy = value.HolidayPolicy, IsPaused = value.IsPaused, ArchivedAtUtc = value.ArchivedAtUtc,
             CreatedAtUtc = value.CreatedAtUtc,
         };
 
         public Activity ToActivity() => new(
             Id ?? string.Empty, Title, Notes, RecurrenceKind, Interval, DaysOfWeekMask, DayOfMonth, Ordinal, Weekday,
             StartDate, string.IsNullOrWhiteSpace(EndDate) ? null : EndDate, ParseTime(DeadlineTime), UrgencyMode,
-            WarningMinutes, BleedOverrideMinutes, HolidayPolicy, IsPaused, ArchivedAtUtc, CreatedAtUtc ?? string.Empty, string.Empty);
+            WarningMinutes, BleedOverrideMinutes, ShowAheadHours, HolidayPolicy, IsPaused, ArchivedAtUtc, CreatedAtUtc ?? string.Empty, string.Empty);
     }
 
     private sealed class OneOffForm
@@ -758,6 +769,7 @@ else
         public UrgencyMode UrgencyMode { get; set; }
         [Range(0, 1440)] public int WarningMinutes { get; set; } = 30;
         [Range(0, 720)] public int? BleedOverrideMinutes { get; set; }
+        [Range(0, 168)] public int ShowAheadHours { get; set; }
         public string? CreatedAtUtc { get; set; }
 
         public static OneOffForm Create(DateOnly today) => new() { ScheduledDate = today.ToString("yyyy-MM-dd") };
@@ -766,12 +778,12 @@ else
             Id = value.Id, Title = value.Title, Notes = value.Notes, ScheduledDate = value.ScheduledDate,
             DeadlineTime = FormatTime(value.DeadlineMinutes), UrgencyMode = value.UrgencyMode,
             WarningMinutes = value.WarningMinutes, BleedOverrideMinutes = value.BleedOverrideMinutes,
-            CreatedAtUtc = value.CreatedAtUtc,
+            ShowAheadHours = value.ShowAheadHours, CreatedAtUtc = value.CreatedAtUtc,
         };
 
         public OneOffTask ToTask() => new(
             Id ?? string.Empty, Title, Notes, ScheduledDate, ParseTime(DeadlineTime), UrgencyMode, WarningMinutes,
-            BleedOverrideMinutes, null, null, CreatedAtUtc ?? string.Empty, string.Empty);
+            BleedOverrideMinutes, ShowAheadHours, null, null, CreatedAtUtc ?? string.Empty, string.Empty);
     }
 
     private sealed class SettingsForm

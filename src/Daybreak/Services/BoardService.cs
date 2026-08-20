@@ -19,18 +19,15 @@ public sealed class BoardService(
         var settings = await connection.QuerySingleAsync<HouseholdSettings>("SELECT * FROM HouseholdSettings WHERE Id = 1");
         var timeZone = TimeZoneInfo.FindSystemTimeZoneById(settings.TimeZoneId);
         var today = LocalTimeResolver.Today(clock, timeZone);
-        var yesterday = today.AddDays(-1);
         var now = clock.GetUtcNow();
         var occurrences = await connection.QueryAsync<Occurrence>("""
             SELECT * FROM Occurrences
             WHERE State != @Expired
-              AND EffectiveDate IN (@Today, @Yesterday)
-              AND (EffectiveDate = @Today OR ActionWindowEndUtc > @Now)
+              AND (VisibleFromUtc IS NULL OR VisibleFromUtc <= @Now)
+              AND ActionWindowEndUtc > @Now
             """, new
         {
             Expired = OccurrenceState.Expired,
-            Today = Format(today),
-            Yesterday = Format(yesterday),
             Now = now.ToString("O"),
         });
 
@@ -114,6 +111,7 @@ public sealed class BoardService(
             WHERE Id = @Id
               AND State = @From
               AND Version = @ExpectedVersion
+              AND (VisibleFromUtc IS NULL OR VisibleFromUtc <= @Now)
               AND ActionWindowEndUtc > @Now;
             """, new
         {
@@ -169,6 +167,4 @@ public sealed class BoardService(
         connection.ExecuteScalarAsync<long>(
             "UPDATE HouseholdSettings SET BoardRevision = BoardRevision + 1 WHERE Id = 1 RETURNING BoardRevision",
             transaction: transaction);
-
-    private static string Format(DateOnly date) => date.ToString("yyyy-MM-dd");
 }

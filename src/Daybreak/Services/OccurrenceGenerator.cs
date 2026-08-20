@@ -160,6 +160,7 @@ public sealed class OccurrenceGenerator(
         string createdAt)
     {
         var deadline = ResolveDeadline(effectiveDate, activity.DeadlineMinutes, timeZone);
+        var visibleFrom = ResolveVisibleFrom(effectiveDate, activity.ShowAheadHours, timeZone);
         var actionWindowEnd = ResolveActionWindowEnd(
             effectiveDate,
             activity.BleedOverrideMinutes ?? defaultBleedMinutes,
@@ -173,6 +174,7 @@ public sealed class OccurrenceGenerator(
             ScheduleLabel = RecurrenceDescription.ForActivity(activity),
             NominalDate = Format(nominalDate),
             EffectiveDate = Format(effectiveDate),
+            VisibleFromUtc = visibleFrom.ToString("O"),
             DeadlineUtc = deadline?.ToString("O"),
             ActionWindowEndUtc = actionWindowEnd.ToString("O"),
             activity.UrgencyMode,
@@ -191,20 +193,22 @@ public sealed class OccurrenceGenerator(
         string createdAt)
     {
         var deadline = ResolveDeadline(date, task.DeadlineMinutes, timeZone);
+        var visibleFrom = ResolveVisibleFrom(date, task.ShowAheadHours, timeZone);
         var actionWindowEnd = ResolveActionWindowEnd(date, task.BleedOverrideMinutes ?? defaultBleedMinutes, timeZone);
         return await connection.ExecuteAsync("""
             INSERT INTO Occurrences (
                 Id, OneOffTaskId, TitleSnapshot, NotesSnapshot, ScheduleLabelSnapshot, NominalDate, EffectiveDate,
-                DeadlineUtc, ActionWindowEndUtc, UrgencyMode, WarningMinutes, State, Version, CreatedAtUtc)
+                VisibleFromUtc, DeadlineUtc, ActionWindowEndUtc, UrgencyMode, WarningMinutes, State, Version, CreatedAtUtc)
             VALUES (
                 @Id, @OneOffTaskId, @Title, @Notes, @ScheduleLabel, @NominalDate, @EffectiveDate,
-                @DeadlineUtc, @ActionWindowEndUtc, @UrgencyMode, @WarningMinutes, 0, 0, @CreatedAtUtc)
+                @VisibleFromUtc, @DeadlineUtc, @ActionWindowEndUtc, @UrgencyMode, @WarningMinutes, 0, 0, @CreatedAtUtc)
             ON CONFLICT(OneOffTaskId) WHERE OneOffTaskId IS NOT NULL DO UPDATE SET
                 TitleSnapshot = excluded.TitleSnapshot,
                 NotesSnapshot = excluded.NotesSnapshot,
                 ScheduleLabelSnapshot = excluded.ScheduleLabelSnapshot,
                 NominalDate = excluded.NominalDate,
                 EffectiveDate = excluded.EffectiveDate,
+                VisibleFromUtc = excluded.VisibleFromUtc,
                 DeadlineUtc = excluded.DeadlineUtc,
                 ActionWindowEndUtc = excluded.ActionWindowEndUtc,
                 UrgencyMode = excluded.UrgencyMode,
@@ -215,6 +219,7 @@ public sealed class OccurrenceGenerator(
                 Occurrences.ScheduleLabelSnapshot IS NOT excluded.ScheduleLabelSnapshot OR
                 Occurrences.NominalDate IS NOT excluded.NominalDate OR
                 Occurrences.EffectiveDate IS NOT excluded.EffectiveDate OR
+                Occurrences.VisibleFromUtc IS NOT excluded.VisibleFromUtc OR
                 Occurrences.DeadlineUtc IS NOT excluded.DeadlineUtc OR
                 Occurrences.ActionWindowEndUtc IS NOT excluded.ActionWindowEndUtc OR
                 Occurrences.UrgencyMode IS NOT excluded.UrgencyMode OR
@@ -228,6 +233,7 @@ public sealed class OccurrenceGenerator(
             ScheduleLabel = RecurrenceDescription.OneOff,
             NominalDate = Format(date),
             EffectiveDate = Format(date),
+            VisibleFromUtc = visibleFrom.ToString("O"),
             DeadlineUtc = deadline?.ToString("O"),
             ActionWindowEndUtc = actionWindowEnd.ToString("O"),
             task.UrgencyMode,
@@ -239,15 +245,16 @@ public sealed class OccurrenceGenerator(
     private const string InsertActivitySql = """
         INSERT INTO Occurrences (
             Id, ActivityId, TitleSnapshot, NotesSnapshot, ScheduleLabelSnapshot, NominalDate, EffectiveDate,
-            DeadlineUtc, ActionWindowEndUtc, UrgencyMode, WarningMinutes, State, Version, CreatedAtUtc)
+            VisibleFromUtc, DeadlineUtc, ActionWindowEndUtc, UrgencyMode, WarningMinutes, State, Version, CreatedAtUtc)
         VALUES (
             @Id, @ActivityId, @Title, @Notes, @ScheduleLabel, @NominalDate, @EffectiveDate,
-            @DeadlineUtc, @ActionWindowEndUtc, @UrgencyMode, @WarningMinutes, 0, 0, @CreatedAtUtc)
+            @VisibleFromUtc, @DeadlineUtc, @ActionWindowEndUtc, @UrgencyMode, @WarningMinutes, 0, 0, @CreatedAtUtc)
         ON CONFLICT(ActivityId, NominalDate) WHERE ActivityId IS NOT NULL DO UPDATE SET
             TitleSnapshot = excluded.TitleSnapshot,
             NotesSnapshot = excluded.NotesSnapshot,
             ScheduleLabelSnapshot = excluded.ScheduleLabelSnapshot,
             EffectiveDate = excluded.EffectiveDate,
+            VisibleFromUtc = excluded.VisibleFromUtc,
             DeadlineUtc = excluded.DeadlineUtc,
             ActionWindowEndUtc = excluded.ActionWindowEndUtc,
             UrgencyMode = excluded.UrgencyMode,
@@ -257,6 +264,7 @@ public sealed class OccurrenceGenerator(
             Occurrences.NotesSnapshot IS NOT excluded.NotesSnapshot OR
             Occurrences.ScheduleLabelSnapshot IS NOT excluded.ScheduleLabelSnapshot OR
             Occurrences.EffectiveDate IS NOT excluded.EffectiveDate OR
+            Occurrences.VisibleFromUtc IS NOT excluded.VisibleFromUtc OR
             Occurrences.DeadlineUtc IS NOT excluded.DeadlineUtc OR
             Occurrences.ActionWindowEndUtc IS NOT excluded.ActionWindowEndUtc OR
             Occurrences.UrgencyMode IS NOT excluded.UrgencyMode OR
@@ -265,6 +273,9 @@ public sealed class OccurrenceGenerator(
 
     private static DateTimeOffset? ResolveDeadline(DateOnly date, int? minutes, TimeZoneInfo timeZone) =>
         minutes is null ? null : LocalTimeResolver.Resolve(date, TimeOnly.MinValue.AddMinutes(minutes.Value), timeZone);
+
+    private static DateTimeOffset ResolveVisibleFrom(DateOnly date, int showAheadHours, TimeZoneInfo timeZone) =>
+        LocalTimeResolver.Resolve(date, TimeOnly.MinValue, timeZone).AddHours(-showAheadHours);
 
     private static DateTimeOffset ResolveActionWindowEnd(DateOnly date, int bleedMinutes, TimeZoneInfo timeZone) =>
         LocalTimeResolver.Resolve(date.AddDays(1), TimeOnly.MinValue, timeZone).AddMinutes(bleedMinutes);

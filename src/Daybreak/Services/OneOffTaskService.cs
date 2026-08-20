@@ -24,7 +24,7 @@ public sealed class OneOffTaskService(
 
     public async Task<string> SaveAsync(OneOffTask task)
     {
-        if (string.IsNullOrWhiteSpace(task.Title) || !DateOnly.TryParse(task.ScheduledDate, out _))
+        if (string.IsNullOrWhiteSpace(task.Title) || !DateOnly.TryParse(task.ScheduledDate, out _) || task.ShowAheadHours is < 0 or > 168)
         {
             throw new ArgumentException("A title and valid scheduled date are required.", nameof(task));
         }
@@ -39,10 +39,10 @@ public sealed class OneOffTaskService(
         await connection.ExecuteAsync("""
             INSERT INTO OneOffTasks (
                 Id, Title, Notes, ScheduledDate, DeadlineMinutes, UrgencyMode, WarningMinutes,
-                BleedOverrideMinutes, SourceKind, SourceReference, CreatedAtUtc, UpdatedAtUtc)
+                BleedOverrideMinutes, ShowAheadHours, SourceKind, SourceReference, CreatedAtUtc, UpdatedAtUtc)
             VALUES (
                 @Id, @Title, @Notes, @ScheduledDate, @DeadlineMinutes, @UrgencyMode, @WarningMinutes,
-                @BleedOverrideMinutes, @SourceKind, @SourceReference, @CreatedAtUtc, @UpdatedAtUtc)
+                @BleedOverrideMinutes, @ShowAheadHours, @SourceKind, @SourceReference, @CreatedAtUtc, @UpdatedAtUtc)
             ON CONFLICT(Id) DO UPDATE SET
                 Title = excluded.Title,
                 Notes = excluded.Notes,
@@ -51,6 +51,7 @@ public sealed class OneOffTaskService(
                 UrgencyMode = excluded.UrgencyMode,
                 WarningMinutes = excluded.WarningMinutes,
                 BleedOverrideMinutes = excluded.BleedOverrideMinutes,
+                ShowAheadHours = excluded.ShowAheadHours,
                 SourceKind = excluded.SourceKind,
                 SourceReference = excluded.SourceReference,
                 UpdatedAtUtc = excluded.UpdatedAtUtc;
@@ -64,6 +65,7 @@ public sealed class OneOffTaskService(
             task.UrgencyMode,
             task.WarningMinutes,
             task.BleedOverrideMinutes,
+            task.ShowAheadHours,
             task.SourceKind,
             task.SourceReference,
             CreatedAtUtc = string.IsNullOrWhiteSpace(task.CreatedAtUtc) ? now : task.CreatedAtUtc,

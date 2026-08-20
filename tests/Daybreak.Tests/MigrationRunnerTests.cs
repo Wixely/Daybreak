@@ -47,6 +47,12 @@ public sealed class MigrationRunnerTests
         Assert.AreEqual(SchemaManifest.CurrentVersion, await connection.ExecuteScalarAsync<int>("SELECT MAX(Version) FROM SchemaMigrations"));
         Assert.AreEqual(1, await connection.ExecuteScalarAsync<int>(
             "SELECT COUNT(*) FROM pragma_table_info('Occurrences') WHERE name = 'ScheduleLabelSnapshot'"));
+        Assert.AreEqual(1, await connection.ExecuteScalarAsync<int>(
+            "SELECT COUNT(*) FROM pragma_table_info('Activities') WHERE name = 'ShowAheadHours'"));
+        Assert.AreEqual(1, await connection.ExecuteScalarAsync<int>(
+            "SELECT COUNT(*) FROM pragma_table_info('OneOffTasks') WHERE name = 'ShowAheadHours'"));
+        Assert.AreEqual(1, await connection.ExecuteScalarAsync<int>(
+            "SELECT COUNT(*) FROM pragma_table_info('Occurrences') WHERE name = 'VisibleFromUtc'"));
     }
 
     [TestMethod]

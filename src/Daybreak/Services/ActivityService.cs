@@ -36,11 +36,11 @@ public sealed class ActivityService(
             INSERT INTO Activities (
                 Id, Title, Notes, RecurrenceKind, Interval, DaysOfWeekMask, DayOfMonth, Ordinal, Weekday,
                 StartDate, EndDate, DeadlineMinutes, UrgencyMode, WarningMinutes, BleedOverrideMinutes,
-                HolidayPolicy, IsPaused, ArchivedAtUtc, CreatedAtUtc, UpdatedAtUtc)
+                ShowAheadHours, HolidayPolicy, IsPaused, ArchivedAtUtc, CreatedAtUtc, UpdatedAtUtc)
             VALUES (
                 @Id, @Title, @Notes, @RecurrenceKind, @Interval, @DaysOfWeekMask, @DayOfMonth, @Ordinal, @Weekday,
                 @StartDate, @EndDate, @DeadlineMinutes, @UrgencyMode, @WarningMinutes, @BleedOverrideMinutes,
-                @HolidayPolicy, @IsPaused, @ArchivedAtUtc, @CreatedAtUtc, @UpdatedAtUtc)
+                @ShowAheadHours, @HolidayPolicy, @IsPaused, @ArchivedAtUtc, @CreatedAtUtc, @UpdatedAtUtc)
             ON CONFLICT(Id) DO UPDATE SET
                 Title = excluded.Title,
                 Notes = excluded.Notes,
@@ -56,6 +56,7 @@ public sealed class ActivityService(
                 UrgencyMode = excluded.UrgencyMode,
                 WarningMinutes = excluded.WarningMinutes,
                 BleedOverrideMinutes = excluded.BleedOverrideMinutes,
+                ShowAheadHours = excluded.ShowAheadHours,
                 HolidayPolicy = excluded.HolidayPolicy,
                 IsPaused = excluded.IsPaused,
                 ArchivedAtUtc = excluded.ArchivedAtUtc,
@@ -77,6 +78,7 @@ public sealed class ActivityService(
             activity.UrgencyMode,
             activity.WarningMinutes,
             activity.BleedOverrideMinutes,
+            activity.ShowAheadHours,
             activity.HolidayPolicy,
             activity.IsPaused,
             activity.ArchivedAtUtc,
@@ -137,9 +139,9 @@ public sealed class ActivityService(
             throw new ArgumentException("The schedule dates are invalid.", nameof(activity));
         }
 
-        if (activity.Interval is < 1 or > 365 || activity.WarningMinutes is < 0 or > 1440)
+        if (activity.Interval is < 1 or > 365 || activity.WarningMinutes is < 0 or > 1440 || activity.ShowAheadHours is < 0 or > 168)
         {
-            throw new ArgumentException("The interval or warning window is invalid.", nameof(activity));
+            throw new ArgumentException("The interval, warning window, or show-ahead window is invalid.", nameof(activity));
         }
 
         if (activity.RecurrenceKind is RecurrenceKind.SelectedWeekdays or RecurrenceKind.EveryNWeeks && activity.DaysOfWeekMask == 0)

@@ -59,6 +59,7 @@ public sealed record Activity(
     UrgencyMode UrgencyMode,
     int WarningMinutes,
     int? BleedOverrideMinutes,
+    int ShowAheadHours,
     HolidayPolicy HolidayPolicy,
     bool IsPaused,
     string? ArchivedAtUtc,
@@ -67,7 +68,7 @@ public sealed record Activity(
 {
     public Activity() : this(
         string.Empty, string.Empty, null, RecurrenceKind.Daily, 1, 0, null, null, null,
-        string.Empty, null, null, UrgencyMode.None, 30, null, HolidayPolicy.Keep,
+        string.Empty, null, null, UrgencyMode.None, 30, null, 0, HolidayPolicy.Keep,
         false, null, string.Empty, string.Empty)
     { }
 }
@@ -81,6 +82,7 @@ public sealed record OneOffTask(
     UrgencyMode UrgencyMode,
     int WarningMinutes,
     int? BleedOverrideMinutes,
+    int ShowAheadHours,
     string? SourceKind,
     string? SourceReference,
     string CreatedAtUtc,
@@ -88,7 +90,7 @@ public sealed record OneOffTask(
 {
     public OneOffTask() : this(
         string.Empty, string.Empty, null, string.Empty, null, UrgencyMode.None, 30,
-        null, null, null, string.Empty, string.Empty)
+        null, 0, null, null, string.Empty, string.Empty)
     { }
 }
 
@@ -101,6 +103,7 @@ public sealed record Occurrence(
     string ScheduleLabelSnapshot,
     string NominalDate,
     string EffectiveDate,
+    string? VisibleFromUtc,
     string? DeadlineUtc,
     string ActionWindowEndUtc,
     UrgencyMode UrgencyMode,
@@ -113,7 +116,7 @@ public sealed record Occurrence(
 {
     public Occurrence() : this(
         string.Empty, null, null, string.Empty, null, string.Empty, string.Empty, string.Empty,
-        null, string.Empty, UrgencyMode.None, 30, OccurrenceState.Pending,
+        null, null, string.Empty, UrgencyMode.None, 30, OccurrenceState.Pending,
         null, null, 0, string.Empty)
     { }
 }

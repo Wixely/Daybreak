@@ -93,6 +93,42 @@ public sealed class BoardIntegrationTests
     }
 
     [TestMethod]
+    public async Task ShowAheadMakesTomorrowActivityActionableOnPreviousDay()
+    {
+        var activities = new ActivityService(_connections, _changes, _clock);
+        var generator = new OccurrenceGenerator(_connections, new EmptyHolidayProvider(), _changes, _clock);
+        var board = new BoardService(_connections, generator, _changes, _clock);
+        await activities.SaveAsync(CreateDailyActivity(startDate: "2026-08-20") with { ShowAheadHours = 6 });
+
+        _clock.SetUtcNow(new DateTimeOffset(2026, 8, 19, 16, 59, 0, TimeSpan.Zero));
+        Assert.HasCount(0, (await board.GetSnapshotAsync()).Items);
+
+        _clock.SetUtcNow(new DateTimeOffset(2026, 8, 19, 17, 0, 0, TimeSpan.Zero));
+        var earlyItem = (await board.GetSnapshotAsync()).Items.Single();
+        Assert.AreEqual(new DateOnly(2026, 8, 20), earlyItem.EffectiveDate);
+        Assert.IsTrue(await board.CompleteAsync(earlyItem.Id, earlyItem.Version));
+    }
+
+    [TestMethod]
+    public async Task ShowAheadMakesTomorrowOneOffActionableOnPreviousDay()
+    {
+        var oneOffTasks = new OneOffTaskService(_connections, _changes, _clock);
+        var generator = new OccurrenceGenerator(_connections, new EmptyHolidayProvider(), _changes, _clock);
+        var board = new BoardService(_connections, generator, _changes, _clock);
+        await oneOffTasks.SaveAsync(CreateOneOff("Tomorrow once", null) with
+        {
+            ScheduledDate = "2026-08-20",
+            ShowAheadHours = 6,
+        });
+
+        _clock.SetUtcNow(new DateTimeOffset(2026, 8, 19, 16, 59, 0, TimeSpan.Zero));
+        Assert.HasCount(0, (await board.GetSnapshotAsync()).Items);
+
+        _clock.SetUtcNow(new DateTimeOffset(2026, 8, 19, 17, 0, 0, TimeSpan.Zero));
+        Assert.AreEqual("Tomorrow once", (await board.GetSnapshotAsync()).Items.Single().Title);
+    }
+
+    [TestMethod]
     public async Task OneCompletionNotificationRefreshesEverySubscribedDashboard()
     {
         var activities = new ActivityService(_connections, _changes, _clock);
@@ -179,7 +215,7 @@ public sealed class BoardIntegrationTests
         var board = new BoardService(_connections, generator, _changes, _clock);
         var id = await oneOffTasks.SaveAsync(new OneOffTask(
             string.Empty, "One-time job", null, "2026-08-19", null, UrgencyMode.None,
-            30, null, null, null, string.Empty, string.Empty));
+            30, null, 0, null, null, string.Empty, string.Empty));
 
         var created = await board.GetSnapshotAsync();
         Assert.AreEqual("One-time job", created.Items.Single().Title);
@@ -275,11 +311,11 @@ public sealed class BoardIntegrationTests
     private static Activity CreateDailyActivity(string startDate = "2026-08-19") => new(
         string.Empty, "Test routine", null, RecurrenceKind.Daily, 1, 0, null, null, null,
         startDate, null, 9 * 60, UrgencyMode.BeforeAndAfterDeadline, 30, null,
-        HolidayPolicy.Keep, false, null, string.Empty, string.Empty);
+        0, HolidayPolicy.Keep, false, null, string.Empty, string.Empty);
 
     private static OneOffTask CreateOneOff(string title, int? deadlineMinutes) => new(
         string.Empty, title, null, "2026-08-19", deadlineMinutes, UrgencyMode.None,
-        30, null, null, null, string.Empty, string.Empty);
+        30, null, 0, null, null, string.Empty, string.Empty);
 
     private sealed class EmptyHolidayProvider : IHolidayProvider
     {

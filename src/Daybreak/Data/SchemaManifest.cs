@@ -4,7 +4,7 @@ public sealed record DatabaseMigration(int Version, string Name, string Sql);
 
 public static class SchemaManifest
 {
-    public const int CurrentVersion = 2;
+    public const int CurrentVersion = 3;
 
     public static IReadOnlyList<DatabaseMigration> Migrations { get; } =
     [
@@ -125,6 +125,19 @@ public static class SchemaManifest
                     WHERE Activities.Id = Occurrences.ActivityId
                 ), 'Recurring')
             END;
+            """),
+        new(3, "Schedule early dashboard visibility", """
+            ALTER TABLE Activities
+            ADD COLUMN ShowAheadHours INTEGER NOT NULL DEFAULT 0 CHECK (ShowAheadHours BETWEEN 0 AND 168);
+
+            ALTER TABLE OneOffTasks
+            ADD COLUMN ShowAheadHours INTEGER NOT NULL DEFAULT 0 CHECK (ShowAheadHours BETWEEN 0 AND 168);
+
+            ALTER TABLE Occurrences
+            ADD COLUMN VisibleFromUtc TEXT NULL;
+
+            CREATE INDEX IX_Occurrences_VisibleFromUtc_State
+                ON Occurrences (VisibleFromUtc, State);
             """),
     ];
 }
