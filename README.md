@@ -53,21 +53,6 @@ The Compose file stores SQLite data in the named `daybreak-data` volume. Removin
 
 Daybreak serves HTTP inside the container. Use a trusted reverse proxy for TLS before exposing it outside a trusted household network. Anyone who can reach the dashboard can complete or undo activities; only configuration routes require the administrator password.
 
-### Tagged container releases
-
-Pushing a semantic-version tag such as `v0.1.0` runs the [release workflow](.github/workflows/release.yml). It builds Linux AMD64 and ARM64 images and publishes these tags to the repository's GitHub Container Registry package:
-
-- `0.1.0`
-- `0.1`
-- `latest`
-
-Create the first release tag only after the intended release commit is on GitHub:
-
-```console
-git tag -a v0.1.0 -m "Daybreak v0.1.0"
-git push origin v0.1.0
-```
-
 ## Backup and restore
 
 SQLite uses a persistent Docker volume. Stop writes before taking a filesystem copy:
@@ -82,71 +67,6 @@ docker compose start daybreak
 To restore, stop Daybreak and replace `/data/daybreak.db` in the volume with a known-good backup. Retain the original file until the restored container starts and `/health` reports success.
 
 Database migrations run automatically at startup and are forward-only. Back up the database before deploying a newer Daybreak version.
-
-## Development
-
-Requirements:
-
-- Windows development environment
-- .NET SDK specified by `global.json`
-- PowerShell 7
-- Optional Docker installation for container verification
-
-Run locally with neutral demonstration data:
-
-```powershell
-./scripts/Run.ps1
-```
-
-The development script, VS Code launch profile, and Docker image all use the intentionally low-security administrator password `admin` by default.
-
-Build and test:
-
-```powershell
-./scripts/Build.ps1
-./scripts/Test.ps1
-./scripts/Verify.ps1
-```
-
-Run pending database migrations without starting the web server, or operate the Compose deployment from PowerShell:
-
-```powershell
-./scripts/Migrate.ps1
-./scripts/Docker.ps1 -Command Start
-./scripts/Docker.ps1 -Command Logs
-./scripts/Docker.ps1 -Command Stop
-```
-
-`Docker.ps1 -Command Stop` removes containers and the Compose network but deliberately preserves the named data volume.
-
-`Verify.ps1` checks formatting, runs the Release test suite, publishes framework-dependent Linux AMD64 and ARM64 artifacts, audits NuGet licenses, and fails on known vulnerable or deprecated packages. The project uses no Node.js or Python development, test, build, or asset tooling.
-
-### Browser assets
-
-Daybreak does not load CSS, JavaScript, fonts, or icons from a CDN. The application stylesheet and icon live in `wwwroot`; the pinned Blazor framework scripts are restored from NuGet and copied into every published Linux image. `Verify.ps1` rejects remote CSS/JavaScript asset references and fails if any required published browser asset is missing or empty.
-
-VS Code includes a `Daybreak (Blazor Server)` debug profile plus default build and test tasks.
-
-## Architecture
-
-- .NET 10 and Blazor Interactive Server
-- SQLite and Dapper
-- Project-owned schema manifest and ordered migrations
-- Server-authoritative board snapshots and in-process revision broadcasts
-- Version-checked, idempotent occurrence transitions
-- Vendored Nager.Date v2.44.0 source behind `IHolidayProvider`, with no holiday API or runtime network dependency
-- One household and one server process per deployment
-
-The server materializes a rolling occurrence horizon. Each occurrence retains nominal and effective dates, deadline and action-window instants, completion state, a concurrency version, and a future-ready nullable actor. Connected dashboards receive a revision notification and then fetch the authoritative snapshot; they do not reconstruct state from events. Disconnected dashboards visibly block actions until Blazor reconnects.
-
-See [daybreak.md](daybreak.md) for the full product and delivery plan.
-The latest build, test, and Linux-container evidence is recorded in [docs/verification.md](docs/verification.md).
-
-Architecture decisions:
-
-- [Application and deployment model](docs/decisions/0001-application-and-deployment.md)
-- [Server-authoritative dashboard synchronization](docs/decisions/0002-server-authoritative-synchronization.md)
-- [Holiday adjustment and collisions](docs/decisions/0003-holiday-adjustment-and-collisions.md)
 
 ## Security and privacy
 
