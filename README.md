@@ -4,6 +4,14 @@ Daybreak is a self-hosted household dashboard for recurring activities and one-o
 
 > Daybreak is under active development. Build the image from source until the first tagged release is published.
 
+## Screenshots
+
+[![Daybreak daily dashboard with seeded household activities, deadlines, urgency states, and completed items](docs/images/dashboard.png)](docs/images/dashboard.png)
+
+| Activity configuration | History and analytics |
+| --- | --- |
+| [![Daybreak activity configuration screen](docs/images/configuration.png)](docs/images/configuration.png) | [![Daybreak history and analytics screen](docs/images/history.png)](docs/images/history.png) |
+
 ## What it does
 
 - Generates today's board from daily, weekday, interval, and monthly schedules.
@@ -44,6 +52,21 @@ The Compose file stores SQLite data in the named `daybreak-data` volume. Removin
 | `ASPNETCORE_HTTP_PORTS` | No | `8080` | Container HTTP port. |
 
 Daybreak serves HTTP inside the container. Use a trusted reverse proxy for TLS before exposing it outside a trusted household network. Anyone who can reach the dashboard can complete or undo activities; only configuration routes require the administrator password.
+
+### Tagged container releases
+
+Pushing a semantic-version tag such as `v0.1.0` runs the [release workflow](.github/workflows/release.yml). It builds Linux AMD64 and ARM64 images and publishes these tags to the repository's GitHub Container Registry package:
+
+- `0.1.0`
+- `0.1`
+- `latest`
+
+Create the first release tag only after the intended release commit is on GitHub:
+
+```console
+git tag -a v0.1.0 -m "Daybreak v0.1.0"
+git push origin v0.1.0
+```
 
 ## Backup and restore
 
