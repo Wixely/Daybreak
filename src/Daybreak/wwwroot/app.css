@@ -1336,6 +1336,10 @@ td small {
         padding-left: max(0.75rem, env(safe-area-inset-left));
     }
 
+    .kiosk-shell {
+        padding-bottom: max(3.5rem, calc(env(safe-area-inset-bottom) + 2rem));
+    }
+
     .site-header {
         min-height: 70px;
         gap: 0.5rem;
@@ -1356,7 +1360,13 @@ td small {
         flex-direction: column;
     }
 
+    .dashboard-heading {
+        align-items: center;
+        text-align: center;
+    }
+
     .dashboard-heading .connection-pill {
+        align-self: center;
         padding: 0.5rem 0.7rem;
     }
 
@@ -1378,6 +1388,18 @@ td small {
     .activity-card,
     .activity-action {
         min-height: 210px;
+    }
+
+    .kiosk-shell .activity-grid {
+        justify-content: center;
+    }
+
+    .dashboard-primary {
+        padding-bottom: 1.5rem;
+    }
+
+    .completed-activities {
+        margin-top: 1.5rem;
     }
 }
 
