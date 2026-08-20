@@ -361,6 +361,12 @@ button.activity-action:active {
     box-shadow: 0 0 0 3px rgba(255, 77, 94, 0.12);
 }
 
+.deadline-countdown.exhausted {
+    border-color: #ff7a86;
+    background: #ff4d5e;
+    box-shadow: 0 0 0 3px rgba(255, 77, 94, 0.18);
+}
+
 .status-badge {
     display: inline-flex;
     align-items: center;

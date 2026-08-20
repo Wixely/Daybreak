@@ -33,7 +33,7 @@
         <div class="deadline-display">
             @if (CountdownProgress is { } progress)
             {
-                <span class="deadline-countdown" style="@CountdownStyle(progress)" role="img"
+                <span class="deadline-countdown @(progress >= 1 ? "exhausted" : null)" style="@CountdownStyle(progress)" role="img"
                       aria-label="@CountdownLabel"></span>
             }
             <time datetime="@Item.Deadline.Value.ToString("O")">@FormatTime(Item.Deadline.Value)</time>
