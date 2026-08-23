@@ -18,8 +18,14 @@
             <time datetime="@CurrentLocalTime.ToString("O")">@CurrentLocalTime.ToString("HH:mm")</time>
         </p>
     </div>
-    <div class="connection-pill connected" role="status" title="Revision @(_snapshot?.Revision ?? 0)">
-        <span aria-hidden="true"></span> Live
+    <div class="dashboard-heading-controls">
+        <button class="button button-secondary dashboard-fullscreen-button" type="button" hidden
+                @ref="_fullscreenButton" aria-label="Open Daybreak in full screen">
+            Full screen
+        </button>
+        <div class="connection-pill connected" role="status" title="Revision @(_snapshot?.Revision ?? 0)">
+            <span aria-hidden="true"></span> Live
+        </div>
     </div>
 </section>
 
@@ -112,6 +118,7 @@ else
     private long _requestedRevision;
     private Task? _clockTask;
     private ElementReference _completedSection;
+    private ElementReference _fullscreenButton;
     private IJSObjectReference? _dashboardModule;
     private string? _observedCompletedItems;
     private bool _dashboardBehaviorStarted;
@@ -135,6 +142,7 @@ else
         {
             await _dashboardModule.InvokeVoidAsync("startIdleScroll", 60_000);
             await _dashboardModule.InvokeVoidAsync("initializeKeepAwake");
+            await _dashboardModule.InvokeVoidAsync("bindFullscreenButton", _fullscreenButton);
             _dashboardBehaviorStarted = true;
         }
 

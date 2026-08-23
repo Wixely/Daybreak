@@ -1,6 +1,7 @@
 let completedSectionObserver;
 let idleTimer;
 let idleTimeout = 60_000;
+let fullscreenButton;
 const activityEvents = ["pointerdown", "keydown", "wheel", "touchstart", "scroll"];
 const keepAwakeStorageKey = "daybreak.keepAwake";
 const keepAwakeActivationEvents = ["pointerdown", "touchstart", "keydown"];
@@ -44,6 +45,69 @@ export function initializeKeepAwake() {
     if (readKeepAwakePreference()) {
         void startKeepAwake();
     }
+}
+
+export function bindFullscreenButton(button) {
+    disconnectFullscreenButton();
+    if (!button) {
+        return;
+    }
+
+    fullscreenButton = button;
+    fullscreenButton.addEventListener("click", requestDashboardFullscreen);
+    document.addEventListener("fullscreenchange", updateFullscreenButton);
+    updateFullscreenButton();
+}
+
+function isMobileDevice() {
+    if (navigator.userAgentData?.mobile === true) {
+        return true;
+    }
+
+    if (/Android|iPhone|iPad|iPod|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+        return true;
+    }
+
+    return navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+}
+
+function canRequestDashboardFullscreen() {
+    return isMobileDevice()
+        && window.self === window.top
+        && document.fullscreenEnabled !== false
+        && typeof document.documentElement.requestFullscreen === "function"
+        && !document.fullscreenElement;
+}
+
+function updateFullscreenButton() {
+    if (fullscreenButton) {
+        fullscreenButton.hidden = !canRequestDashboardFullscreen();
+    }
+}
+
+async function requestDashboardFullscreen() {
+    if (!canRequestDashboardFullscreen()) {
+        updateFullscreenButton();
+        return;
+    }
+
+    try {
+        await document.documentElement.requestFullscreen();
+    } catch {
+        // A browser or device policy may reject fullscreen even when the API is exposed.
+    }
+
+    updateFullscreenButton();
+}
+
+function disconnectFullscreenButton() {
+    if (!fullscreenButton) {
+        return;
+    }
+
+    fullscreenButton.removeEventListener("click", requestDashboardFullscreen);
+    document.removeEventListener("fullscreenchange", updateFullscreenButton);
+    fullscreenButton = undefined;
 }
 
 export function bindKeepAwakeSetting(toggle) {
@@ -217,5 +281,6 @@ function stopIdleScroll() {
 
 export function stopDashboardBehavior() {
     disconnectCompletedSection();
+    disconnectFullscreenButton();
     stopIdleScroll();
 }

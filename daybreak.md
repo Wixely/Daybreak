@@ -8,7 +8,7 @@
 - Development platform: Windows
 - Supported deployment: Linux Docker containers only
 - Captured: 2026-08-19
-- Last planned: 2026-08-19
+- Last planned: 2026-08-23
 
 ## Product brief
 
@@ -436,3 +436,4 @@ These do not block repository foundation or the first synchronized slice:
 - [x] Build and run the production image with a Linux OCI runtime; verify fresh-volume ownership, non-root execution, direct-password login, persistence, backup, and restore. — Owner: Codex — Completed: 2026-08-19
 - [x] Build and run `docker compose up --build` on Docker Engine; verify the built-in image password, non-root process, health endpoint, and named-volume recreation. — Owner: Codex — Completed: 2026-08-19
 - [x] Verify login, completion, undo, and administration-to-dashboard synchronization in live browser sessions. — Owner: Codex — Completed: 2026-08-19
+- [x] Add a mobile-only homepage fullscreen control that remains hidden in iframes, unsupported browsers, and active fullscreen sessions. — Owner: Codex — Completed: 2026-08-23

@@ -192,6 +192,26 @@ h1 {
     min-height: calc(100vh - 56px - clamp(0.65rem, 1.25vw, 1.1rem) - 1.5rem);
 }
 
+.dashboard-heading-controls {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 0.65rem;
+}
+
+.dashboard-fullscreen-button {
+    min-height: auto;
+    padding: 0.65rem 0.85rem;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.dashboard-fullscreen-button[hidden] {
+    display: none;
+}
+
 .connection-pill {
     display: inline-flex;
     flex: none;
@@ -1365,8 +1385,17 @@ td small {
         text-align: center;
     }
 
-    .dashboard-heading .connection-pill {
+    .dashboard-heading-controls {
         align-self: center;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .dashboard-heading .connection-pill {
+        padding: 0.5rem 0.7rem;
+    }
+
+    .dashboard-fullscreen-button {
         padding: 0.5rem 0.7rem;
     }
 

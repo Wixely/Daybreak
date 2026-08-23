@@ -61,6 +61,8 @@ public sealed partial class ApplicationSmokeTests
         Assert.IsFalse(dashboardHtml.Contains("Tap when complete", StringComparison.Ordinal));
         StringAssert.Contains(dashboardHtml, "dashboard-brand-link");
         StringAssert.Contains(dashboardHtml, "dashboard-clock");
+        StringAssert.Contains(dashboardHtml, "dashboard-fullscreen-button");
+        StringAssert.Contains(dashboardHtml, "Open Daybreak in full screen");
         Assert.IsFalse(dashboardHtml.Contains("<p class=\"eyebrow\">Today</p>", StringComparison.Ordinal));
         Assert.IsFalse(dashboardHtml.Contains("tabindex=\"-1\"", StringComparison.Ordinal));
         Assert.AreEqual(HttpStatusCode.OK, health.StatusCode);
@@ -108,6 +110,10 @@ public sealed partial class ApplicationSmokeTests
         StringAssert.Contains(behaviorScript, "daybreak.keepAwake");
         StringAssert.Contains(behaviorScript, "localStorage");
         StringAssert.Contains(behaviorScript, "audio/wav");
+        StringAssert.Contains(behaviorScript, "navigator.userAgentData?.mobile");
+        StringAssert.Contains(behaviorScript, "window.self === window.top");
+        StringAssert.Contains(behaviorScript, "requestFullscreen");
+        StringAssert.Contains(behaviorScript, "fullscreenchange");
     }
 
     [TestMethod]
