@@ -1,9 +1,17 @@
 using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Text.RegularExpressions;
+using System.Text.Json;
+using Dapper;
+using Daybreak.Data;
+using Daybreak.Security;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
+using ModelContextProtocol.Client;
 
 namespace Daybreak.Tests;
 
@@ -29,6 +37,8 @@ public sealed partial class ApplicationSmokeTests
                     ["ConnectionStrings:Daybreak"] = $"Data Source={Path.Combine(_directory, "web.db")};Pooling=False",
                     ["Daybreak:SeedDemoData"] = "true",
                     ["Daybreak:DataProtectionKeysPath"] = Path.Combine(_directory, "keys"),
+                    ["Daybreak:EnableApi"] = "true",
+                    ["Daybreak:EnableMcp"] = "true",
                 }));
         });
     }
@@ -114,6 +124,8 @@ public sealed partial class ApplicationSmokeTests
         StringAssert.Contains(behaviorScript, "window.self === window.top");
         StringAssert.Contains(behaviorScript, "requestFullscreen");
         StringAssert.Contains(behaviorScript, "fullscreenchange");
+        StringAssert.Contains(behaviorScript, "navigator.clipboard");
+        StringAssert.Contains(behaviorScript, "execCommand(\"copy\")");
     }
 
     [TestMethod]
@@ -205,6 +217,105 @@ public sealed partial class ApplicationSmokeTests
                 HttpStatusCode.Redirect, HttpStatusCode.Redirect, HttpStatusCode.TooManyRequests,
             },
             statuses);
+    }
+
+    [TestMethod]
+    public async Task ApiRequiresDeploymentAndApplicationActivationAndBearerKey()
+    {
+        using var client = _factory.CreateClient();
+        Assert.AreEqual(HttpStatusCode.NotFound, (await client.GetAsync("/api/v1/board")).StatusCode);
+
+        string secret;
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var access = scope.ServiceProvider.GetRequiredService<AgentAccessService>();
+            secret = (await access.GenerateAsync(AgentSurface.Api)).Secret;
+            await access.UpdateEnabledAsync(apiEnabled: true, mcpEnabled: false);
+        }
+
+        Assert.AreEqual(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/v1/board")).StatusCode);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", secret);
+        using var response = await client.GetAsync("/api/v1/board");
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        using var board = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var item = board.RootElement.GetProperty("items")[0];
+        var occurrenceId = item.GetProperty("id").GetString();
+        var expectedVersion = item.GetProperty("version").GetInt64();
+
+        using var completed = await client.PostAsJsonAsync(
+            $"/api/v1/occurrences/{occurrenceId}/complete",
+            new { expectedVersion });
+        Assert.AreEqual(HttpStatusCode.OK, completed.StatusCode);
+        StringAssert.Contains(await completed.Content.ReadAsStringAsync(), "\"applied\":true");
+
+        await using var auditScope = _factory.Services.CreateAsyncScope();
+        var connections = auditScope.ServiceProvider.GetRequiredService<DatabaseConnectionFactory>();
+        await using var connection = await connections.OpenAsync();
+        Assert.IsGreaterThanOrEqualTo(2, await connection.ExecuteScalarAsync<int>(
+            "SELECT COUNT(*) FROM AgentAccessEvents WHERE Surface = 'Api'"));
+        Assert.AreEqual(0, await connection.ExecuteScalarAsync<int>(
+            "SELECT COUNT(*) FROM AgentAccessEvents WHERE Path LIKE @Secret",
+            new { Secret = $"%{secret}%" }));
+    }
+
+    [TestMethod]
+    public async Task McpCanBeEnabledWithoutMcpKeyThenRequireOneAfterGeneration()
+    {
+        using var client = _factory.CreateClient();
+        string mcpKey;
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var access = scope.ServiceProvider.GetRequiredService<AgentAccessService>();
+            await access.GenerateAsync(AgentSurface.Api);
+            await access.UpdateEnabledAsync(apiEnabled: true, mcpEnabled: true);
+        }
+
+        using var unauthenticatedRequest = new HttpRequestMessage(HttpMethod.Post, "/mcp")
+        {
+            Content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json"),
+        };
+        using var unauthenticated = await client.SendAsync(unauthenticatedRequest);
+        Assert.AreNotEqual(HttpStatusCode.NotFound, unauthenticated.StatusCode);
+        Assert.AreNotEqual(HttpStatusCode.Unauthorized, unauthenticated.StatusCode);
+
+        await using (var transport = new HttpClientTransport(
+            new HttpClientTransportOptions
+            {
+                Endpoint = new Uri(client.BaseAddress!, "/mcp"),
+                TransportMode = HttpTransportMode.StreamableHttp,
+            },
+            client,
+            NullLoggerFactory.Instance,
+            ownsHttpClient: false))
+        await using (var mcpClient = await McpClient.CreateAsync(transport))
+        {
+            var tools = await mcpClient.ListToolsAsync();
+            Assert.IsTrue(tools.Any(tool => tool.Name == "get_board"));
+            Assert.IsTrue(tools.Any(tool => tool.Name == "save_activity"));
+            var boardResult = await mcpClient.CallToolAsync("get_board", new Dictionary<string, object?>());
+            Assert.IsFalse(boardResult.IsError ?? false);
+            Assert.IsNotNull(boardResult.StructuredContent);
+        }
+
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            mcpKey = (await scope.ServiceProvider.GetRequiredService<AgentAccessService>()
+                .GenerateAsync(AgentSurface.Mcp)).Secret;
+        }
+
+        using var deniedRequest = new HttpRequestMessage(HttpMethod.Post, "/mcp")
+        {
+            Content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json"),
+        };
+        Assert.AreEqual(HttpStatusCode.Unauthorized, (await client.SendAsync(deniedRequest)).StatusCode);
+
+        using var keyedRequest = new HttpRequestMessage(HttpMethod.Post, "/mcp")
+        {
+            Content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json"),
+        };
+        keyedRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", mcpKey);
+        using var keyed = await client.SendAsync(keyedRequest);
+        Assert.AreNotEqual(HttpStatusCode.Unauthorized, keyed.StatusCode);
     }
 
     [GeneratedRegex("<input[^>]+name=\"__RequestVerificationToken\"[^>]+value=\"([^\"]+)\"", RegexOptions.IgnoreCase)]

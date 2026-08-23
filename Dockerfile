@@ -24,6 +24,8 @@ ENV ASPNETCORE_HTTP_PORTS=8080 \
     ASPNETCORE_ENVIRONMENT=Production \
     ConnectionStrings__Daybreak="Data Source=/data/daybreak.db" \
     Daybreak__DataProtectionKeysPath=/data/keys \
+    Daybreak__EnableApi=false \
+    Daybreak__EnableMcp=false \
     DAYBREAK_ADMIN_PASSWORD=admin
 EXPOSE 8080
 VOLUME ["/data"]

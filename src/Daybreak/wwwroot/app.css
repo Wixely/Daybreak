@@ -1021,6 +1021,65 @@ textarea {
     background: rgba(255, 255, 255, 0.025);
 }
 
+.automation-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.automation-card {
+    display: grid;
+    align-content: start;
+    gap: 1rem;
+    padding: 1rem;
+    border: 1px solid var(--line);
+    border-radius: 1rem;
+    background: rgba(9, 15, 28, 0.28);
+}
+
+.automation-card h3,
+.automation-card p {
+    margin-bottom: 0;
+}
+
+.automation-card > div > p:not(.eyebrow),
+.credential-actions small,
+.credential-output small {
+    color: var(--muted);
+}
+
+.credential-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.7rem;
+}
+
+.credential-output {
+    display: grid;
+    gap: 0.45rem;
+    padding: 0.8rem;
+    border: 1px solid var(--line);
+    border-radius: 0.8rem;
+    background: var(--surface);
+}
+
+.copy-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.55rem;
+}
+
+.copy-row input {
+    min-width: 0;
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.automation-warning {
+    color: #ffd2a8 !important;
+}
+
 .cache-status span,
 .cache-status small {
     color: var(--muted);
@@ -1541,6 +1600,14 @@ td small {
     }
 
     .system-status {
+        grid-template-columns: 1fr;
+    }
+
+    .automation-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .copy-row {
         grid-template-columns: 1fr;
     }
 }

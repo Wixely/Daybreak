@@ -8,7 +8,7 @@ Last verified: 2026-08-23
 
 - formatting verification;
 - Release build with zero warnings and zero errors;
-- 52 passing Daybreak tests with no failures or skips, including the mobile-fullscreen visibility contract;
+- 58 passing Daybreak tests with no failures or skips, including the mobile-fullscreen visibility contract, API/MCP activation and authentication, MCP tool discovery and invocation, and the schema 3 upgrade path;
 - 669 passing vendored Nager.Date tests, with its network source-validation test skipped;
 - framework-dependent `linux-x64` publish;
 - framework-dependent `linux-arm64` publish;
@@ -50,6 +50,8 @@ The Docker-specific exercise additionally proved:
 - a following `docker compose up --no-build --detach` starts healthy and reuses the existing migrated database.
 
 All containers, volumes, image tags, and backup files created for the exercise were removed afterward.
+
+On 2026-08-23, the API/MCP change was also built as a production Linux image with Podman under WSL. A disposable container started with both deployment flags enabled, applied schema migration 4, reported healthy, retained both flag values, and returned `404` from `/api/v1` before the required administrator activation. The disposable container and image tag were removed afterward.
 
 ## Browser exercise
 

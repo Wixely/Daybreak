@@ -38,9 +38,11 @@ public sealed record HouseholdSettings(
     int DefaultBleedMinutes,
     string? HolidayCountryCode,
     string? HolidaySubdivisionCode,
-    long BoardRevision)
+    long BoardRevision,
+    bool ApiEnabled,
+    bool McpEnabled)
 {
-    public HouseholdSettings() : this(0, string.Empty, 0, null, null, 0) { }
+    public HouseholdSettings() : this(0, string.Empty, 0, null, null, 0, false, false) { }
 }
 
 public sealed record Activity(

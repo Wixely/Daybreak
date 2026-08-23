@@ -7,6 +7,7 @@ Daybreak's direct runtime dependencies are:
 | Dapper | Database mapping | Apache-2.0 |
 | Microsoft.AspNetCore.App.Internal.Assets | Blazor framework JavaScript copied into the published image | MIT |
 | Microsoft.Data.Sqlite | SQLite provider | MIT |
+| ModelContextProtocol.AspNetCore v2.2.0 | Stateless Streamable HTTP MCP server | Apache-2.0 |
 | Nager.Date v2.44.0 | Vendored public-holiday calculation source, modified for Daybreak's local build | MIT |
 
 Daybreak uses no third-party CSS or JavaScript from a CDN. Its application CSS and icon are project-owned assets committed under `src/Daybreak/wwwroot`.

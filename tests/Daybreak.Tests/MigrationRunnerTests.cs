@@ -56,6 +56,42 @@ public sealed class MigrationRunnerTests
     }
 
     [TestMethod]
+    public async Task PreviousSchemaUpgradesWithAgentAccessDisabled()
+    {
+        await using (var connection = await _connections.OpenAsync())
+        {
+            await connection.ExecuteAsync("""
+                CREATE TABLE SchemaMigrations (
+                    Version INTEGER NOT NULL PRIMARY KEY,
+                    Name TEXT NOT NULL,
+                    AppliedAtUtc TEXT NOT NULL
+                );
+                """);
+            foreach (var migration in SchemaManifest.Migrations.Where(item => item.Version < SchemaManifest.CurrentVersion))
+            {
+                await connection.ExecuteAsync(migration.Sql);
+                await connection.ExecuteAsync(
+                    "INSERT INTO SchemaMigrations (Version, Name, AppliedAtUtc) VALUES (@Version, @Name, @AppliedAtUtc)",
+                    new { migration.Version, migration.Name, AppliedAtUtc = DateTimeOffset.UtcNow.ToString("O") });
+            }
+        }
+
+        await new MigrationRunner(_connections, NullLogger<MigrationRunner>.Instance).MigrateAsync();
+
+        await using var upgraded = await _connections.OpenAsync();
+        Assert.AreEqual("Europe/London", await upgraded.ExecuteScalarAsync<string>(
+            "SELECT TimeZoneId FROM HouseholdSettings WHERE Id = 1"));
+        Assert.AreEqual(0, await upgraded.ExecuteScalarAsync<int>(
+            "SELECT ApiEnabled FROM HouseholdSettings WHERE Id = 1"));
+        Assert.AreEqual(0, await upgraded.ExecuteScalarAsync<int>(
+            "SELECT McpEnabled FROM HouseholdSettings WHERE Id = 1"));
+        Assert.AreEqual(1, await upgraded.ExecuteScalarAsync<int>(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'AgentCredentials'"));
+        Assert.AreEqual(1, await upgraded.ExecuteScalarAsync<int>(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'AgentAccessEvents'"));
+    }
+
+    [TestMethod]
     public async Task NewerDatabaseSchemaIsRejected()
     {
         var runner = new MigrationRunner(_connections, NullLogger<MigrationRunner>.Instance);

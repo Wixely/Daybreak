@@ -6,10 +6,13 @@
 @inject SettingsService Settings
 @inject OccurrenceGenerator Generator
 @inject HistoryService History
+@inject AgentAccessService AgentAccess
 @inject TimeProvider Clock
 @inject IHolidayProvider HolidayProvider
 @inject IJSRuntime JavaScript
+@inject NavigationManager Navigation
 @using Daybreak.Data
+@using Daybreak.Security
 @using Microsoft.JSInterop
 
 <PageTitle>Configure · Daybreak</PageTitle>
@@ -332,6 +335,110 @@ else if (_tab == SettingsTab)
                     </span>
                 </label>
             </div>
+            @if (_agentAccess.ApiAvailable || _agentAccess.McpAvailable)
+            {
+                <div class="automation-grid">
+                    @if (_agentAccess.ApiAvailable)
+                    {
+                        <section class="automation-card" aria-labelledby="api-access-heading">
+                            <div>
+                                <p class="eyebrow">Automation</p>
+                                <h3 id="api-access-heading">HTTP API</h3>
+                                <p>Bearer-key access to the versioned server-authoritative API.</p>
+                            </div>
+                            <label class="toggle-field" for="api-enabled">
+                                <InputCheckbox id="api-enabled" @bind-Value="_settings.ApiEnabled"
+                                               disabled="@(_saving || _agentAccess.ApiCredential is null)" />
+                                <span class="toggle-copy">
+                                    <strong>Enable API</strong>
+                                    <small>@(_agentAccess.ApiCredential is null ? "Generate an API key first." : "Makes the API endpoint available to clients with the active key.")</small>
+                                </span>
+                            </label>
+                            <div class="credential-actions">
+                                <button class="button button-secondary" type="button" disabled="@_saving" @onclick="GenerateApiKeyAsync">
+                                    @(_agentAccess.ApiCredential is null ? "Generate API key" : "Generate new API key")
+                                </button>
+                                @if (_agentAccess.ApiCredential is not null)
+                                {
+                                    <small>Active key ends in <code>@_agentAccess.ApiCredential.Suffix</code>. Generating a new key revokes it.</small>
+                                }
+                            </div>
+                            @if (_newApiKey is not null)
+                            {
+                                <div class="credential-output" role="status">
+                                    <strong>Copy this API key now</strong>
+                                    <small>It will not be shown again after leaving this page.</small>
+                                    <div class="copy-row"><input value="@_newApiKey" readonly aria-label="Generated API key" /><button class="button button-secondary" type="button" @onclick="() => CopyAsync(_newApiKey)">Copy key</button></div>
+                                </div>
+                            }
+                            @if (_agentAccess.ApiCredential is not null)
+                            {
+                                <div class="credential-output">
+                                    <strong>API endpoint</strong>
+                                    <div class="copy-row"><input value="@ApiUrl" readonly aria-label="API endpoint" /><button class="button button-secondary" type="button" @onclick="() => CopyAsync(ApiUrl)">Copy link</button></div>
+                                    <small>Send the key as <code>Authorization: Bearer &lt;api-key&gt;</code>.</small>
+                                </div>
+                            }
+                        </section>
+                    }
+                    @if (_agentAccess.McpAvailable)
+                    {
+                        <section class="automation-card" aria-labelledby="mcp-access-heading">
+                            <div>
+                                <p class="eyebrow">Agent tools</p>
+                                <h3 id="mcp-access-heading">MCP server</h3>
+                                <p>Stateless Streamable HTTP tools backed by the same API operations.</p>
+                            </div>
+                            @if (!_agentAccess.ApiAvailable)
+                            {
+                                <p class="automation-warning" role="alert">MCP also requires <code>Daybreak__EnableApi=true</code>.</p>
+                            }
+                            <label class="toggle-field" for="mcp-enabled">
+                                <InputCheckbox id="mcp-enabled" @bind-Value="_settings.McpEnabled"
+                                               disabled="@(_saving || (!_settings.McpEnabled && (!_settings.ApiEnabled || _agentAccess.ApiCredential is null || !_agentAccess.ApiAvailable)))" />
+                                <span class="toggle-copy">
+                                    <strong>Enable MCP</strong>
+                                    <small>Requires enabled API access and an active API key.</small>
+                                </span>
+                            </label>
+                            <div class="credential-actions">
+                                <button class="button button-secondary" type="button"
+                                        disabled="@(_saving || _agentAccess.ApiCredential is null)" @onclick="GenerateMcpKeyAsync">
+                                    @(_agentAccess.McpCredential is null ? "Generate MCP key" : "Generate new MCP key")
+                                </button>
+                                @if (_agentAccess.McpCredential is not null)
+                                {
+                                    <button class="button button-danger" type="button" disabled="@_saving" @onclick="RemoveMcpKeyAsync">Remove MCP key</button>
+                                    <small>Active key ends in <code>@_agentAccess.McpCredential.Suffix</code>.</small>
+                                }
+                            </div>
+                            @if (_newMcpKey is not null)
+                            {
+                                <div class="credential-output" role="status">
+                                    <strong>Copy this MCP key now</strong>
+                                    <small>It will not be shown again after leaving this page.</small>
+                                    <div class="copy-row"><input value="@_newMcpKey" readonly aria-label="Generated MCP key" /><button class="button button-secondary" type="button" @onclick="() => CopyAsync(_newMcpKey)">Copy key</button></div>
+                                </div>
+                            }
+                            @if (_agentAccess.ApiCredential is not null)
+                            {
+                                <div class="credential-output">
+                                    <strong>MCP endpoint</strong>
+                                    <div class="copy-row"><input value="@McpUrl" readonly aria-label="MCP endpoint" /><button class="button button-secondary" type="button" @onclick="() => CopyAsync(McpUrl)">Copy link</button></div>
+                                    @if (_agentAccess.McpCredential is null)
+                                    {
+                                        <small class="automation-warning">No MCP key is configured. When enabled, this endpoint accepts unauthenticated clients that can reach it.</small>
+                                    }
+                                    else
+                                    {
+                                        <small>Send the MCP key as a bearer credential.</small>
+                                    }
+                                </div>
+                            }
+                        </section>
+                    }
+                </div>
+            }
             <div class="cache-status">
                 <span>Holiday engine</span>
                 <strong>Bundled Nager.Date v2.44.0</strong>
@@ -469,6 +576,7 @@ else
     private ActivityForm _activity = new();
     private OneOffForm _oneOff = new();
     private SettingsForm _settings = new();
+    private AgentAccessConfiguration _agentAccess = new(false, false, false, false, null, null);
     private HistorySnapshot _history = new(0, 0, 0, 0, 0, [], [], [], [], []);
     private string _tab = "activities";
     private bool _loading = true;
@@ -476,11 +584,15 @@ else
     private bool _showArchived;
     private string _historySearch = string.Empty;
     private string? _message;
+    private string? _newApiKey;
+    private string? _newMcpKey;
     private bool _messageIsError;
     private string _adjustedPreview = "Use the preview to check moved, suppressed, or colliding dates.";
     private ElementReference _keepAwakeToggle;
     private IJSObjectReference? _dashboardModule;
     private static string ApplicationVersion => typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "development";
+    private string ApiUrl => $"{Navigation.BaseUri.TrimEnd('/')}/api/v1";
+    private string McpUrl => $"{Navigation.BaseUri.TrimEnd('/')}/mcp";
     private IReadOnlyList<HolidaySubdivisionOption> HolidaySubdivisions => HolidayCatalog.GetSubdivisions(_settings.CountryCode);
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
@@ -502,12 +614,15 @@ else
         _activities = (await Activities.ListAsync(_showArchived)).ToList();
         _oneOffTasks = (await OneOffTasks.ListAsync()).ToList();
         var settings = await Settings.GetAsync();
+        _agentAccess = await AgentAccess.GetAsync();
         _settings = new SettingsForm
         {
             TimeZoneId = settings.TimeZoneId,
             DefaultBleedMinutes = settings.DefaultBleedMinutes,
             CountryCode = settings.HolidayCountryCode,
             SubdivisionCode = settings.HolidaySubdivisionCode,
+            ApiEnabled = _agentAccess.ApiEnabled,
+            McpEnabled = _agentAccess.McpEnabled,
         };
         if (_activity.Id is null && string.IsNullOrWhiteSpace(_activity.StartDate))
         {
@@ -629,8 +744,45 @@ else
     private async Task SaveSettingsAsync() => await RunSaveAsync(async () =>
     {
         await Settings.UpdateAsync(_settings.TimeZoneId, _settings.DefaultBleedMinutes, _settings.CountryCode, _settings.SubdivisionCode);
+        await AgentAccess.UpdateEnabledAsync(_settings.ApiEnabled, _settings.McpEnabled);
+        _agentAccess = await AgentAccess.GetAsync();
         await Generator.EnsureRollingHorizonAsync();
     }, "Household settings saved.");
+
+    private async Task GenerateApiKeyAsync() => await RunSaveAsync(async () =>
+    {
+        _newApiKey = (await AgentAccess.GenerateAsync(AgentSurface.Api)).Secret;
+        _agentAccess = await AgentAccess.GetAsync();
+    }, "A new API key was generated. Copy it now; the previous key no longer works.");
+
+    private async Task GenerateMcpKeyAsync() => await RunSaveAsync(async () =>
+    {
+        _newMcpKey = (await AgentAccess.GenerateAsync(AgentSurface.Mcp)).Secret;
+        _agentAccess = await AgentAccess.GetAsync();
+    }, "A new MCP key was generated. Copy it now; the previous key no longer works.");
+
+    private async Task RemoveMcpKeyAsync() => await RunSaveAsync(async () =>
+    {
+        await AgentAccess.RemoveMcpKeyAsync();
+        _newMcpKey = null;
+        _agentAccess = await AgentAccess.GetAsync();
+    }, "The MCP key was removed. Enabled MCP access is now unauthenticated.");
+
+    private async Task CopyAsync(string value)
+    {
+        try
+        {
+            _dashboardModule ??= await JavaScript.InvokeAsync<IJSObjectReference>("import", "./dashboard.js");
+            await _dashboardModule.InvokeVoidAsync("copyText", value);
+            _message = "Copied to the clipboard.";
+            _messageIsError = false;
+        }
+        catch (JSException)
+        {
+            _message = "Clipboard access is unavailable. Select and copy the value manually.";
+            _messageIsError = true;
+        }
+    }
 
     private async Task RunSaveAsync(Func<Task> operation, string success)
     {
@@ -846,6 +998,8 @@ else
         [Range(0, 720)] public int DefaultBleedMinutes { get; set; } = 120;
         [StringLength(2, MinimumLength = 2)] public string? CountryCode { get; set; }
         [StringLength(12)] public string? SubdivisionCode { get; set; }
+        public bool ApiEnabled { get; set; }
+        public bool McpEnabled { get; set; }
     }
 
     public async ValueTask DisposeAsync()

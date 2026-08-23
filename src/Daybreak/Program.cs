@@ -1,3 +1,4 @@
+using Daybreak.Automation;
 using Daybreak.Components;
 using Daybreak.Data;
 using Daybreak.Security;
@@ -7,12 +8,16 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.RateLimiting;
+using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+builder.Services.ConfigureHttpJsonOptions(options =>
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+builder.Services.Configure<AgentFeatureOptions>(builder.Configuration.GetSection(AgentFeatureOptions.SectionName));
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
@@ -65,8 +70,13 @@ builder.Services.AddScoped<SettingsService>();
 builder.Services.AddScoped<HistoryService>();
 builder.Services.AddScoped<DemoDataSeeder>();
 builder.Services.AddScoped<OccurrenceGenerator>();
+builder.Services.AddScoped<AgentAccessService>();
+builder.Services.AddScoped<AgentOperations>();
 builder.Services.AddScoped<IHolidayProvider, NagerDateHolidayProvider>();
 builder.Services.AddHostedService<BoardClockWorker>();
+builder.Services.AddMcpServer()
+    .WithHttpTransport(options => options.Stateless = true)
+    .WithTools<DaybreakMcpTools>();
 
 var app = builder.Build();
 
@@ -84,6 +94,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
 app.UseRateLimiter();
+app.UseMiddleware<AgentAccessMiddleware>();
 
 await app.Services.GetRequiredService<MigrationRunner>().MigrateAsync();
 if (args.Contains("--migrate-only", StringComparer.OrdinalIgnoreCase))
@@ -121,6 +132,8 @@ app.MapPost("/auth/logout", async (HttpContext context, IAntiforgery antiforgery
 }).RequireAuthorization();
 
 app.MapHealthChecks("/health");
+app.MapAgentApi();
+app.MapMcp("/mcp");
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

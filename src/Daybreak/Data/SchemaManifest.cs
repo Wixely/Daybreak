@@ -4,7 +4,7 @@ public sealed record DatabaseMigration(int Version, string Name, string Sql);
 
 public static class SchemaManifest
 {
-    public const int CurrentVersion = 3;
+    public const int CurrentVersion = 4;
 
     public static IReadOnlyList<DatabaseMigration> Migrations { get; } =
     [
@@ -138,6 +138,34 @@ public static class SchemaManifest
 
             CREATE INDEX IX_Occurrences_VisibleFromUtc_State
                 ON Occurrences (VisibleFromUtc, State);
+            """),
+        new(4, "Agent API and MCP access", """
+            ALTER TABLE HouseholdSettings
+            ADD COLUMN ApiEnabled INTEGER NOT NULL DEFAULT 0 CHECK (ApiEnabled IN (0, 1));
+
+            ALTER TABLE HouseholdSettings
+            ADD COLUMN McpEnabled INTEGER NOT NULL DEFAULT 0 CHECK (McpEnabled IN (0, 1));
+
+            CREATE TABLE AgentCredentials (
+                Kind TEXT NOT NULL PRIMARY KEY CHECK (Kind IN ('Api', 'Mcp')),
+                SecretHash TEXT NOT NULL,
+                Suffix TEXT NOT NULL,
+                CreatedAtUtc TEXT NOT NULL
+            );
+
+            CREATE TABLE AgentAccessEvents (
+                Id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                Surface TEXT NOT NULL,
+                CredentialSuffix TEXT NULL,
+                Method TEXT NOT NULL,
+                Path TEXT NOT NULL,
+                StatusCode INTEGER NOT NULL,
+                CorrelationId TEXT NOT NULL,
+                OccurredAtUtc TEXT NOT NULL
+            );
+
+            CREATE INDEX IX_AgentAccessEvents_OccurredAtUtc
+                ON AgentAccessEvents (OccurredAtUtc DESC);
             """),
     ];
 }

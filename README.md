@@ -25,6 +25,7 @@ Daybreak is a self-hosted household dashboard for recurring activities and one-o
 - Adjusts schedules around holidays calculated by a vendored, fully offline Nager.Date provider.
 - Reports completion rate, on-time/late/unfinished results, weekly trends, and per-activity summaries.
 - Protects configuration with one Docker-image password while leaving the dashboard URL open.
+- Optionally exposes a versioned bearer-key API and a Streamable HTTP MCP server after deployment and administrator activation.
 
 ## Run with Docker Compose
 
@@ -49,6 +50,8 @@ The Compose file stores SQLite data in the named `daybreak-data` volume. Removin
 | `ConnectionStrings__Daybreak` | No | `Data Source=/data/daybreak.db` | SQLite connection string. |
 | `Daybreak__SeedDemoData` | No | `false` | Seeds neutral demonstration activities into an empty database. |
 | `Daybreak__DataProtectionKeysPath` | No | `/data/keys` in Docker | Persists administrator cookie-signing keys across container restarts. |
+| `Daybreak__EnableApi` | No | `false` | Reveals API controls in administration; it does not activate the API by itself. |
+| `Daybreak__EnableMcp` | No | `false` | Reveals MCP controls in administration; it does not activate MCP by itself. |
 | `ASPNETCORE_HTTP_PORTS` | No | `8080` | Container HTTP port. |
 
 Daybreak serves HTTP inside the container. Use a trusted reverse proxy for TLS before exposing it outside a trusted household network. Anyone who can reach the dashboard can complete or undo activities; only configuration routes require the administrator password.
@@ -68,6 +71,23 @@ To restore, stop Daybreak and replace `/data/daybreak.db` in the volume with a k
 
 Database migrations run automatically at startup and are forward-only. Back up the database before deploying a newer Daybreak version.
 
+## Agent API and MCP
+
+Automation is disabled by default and requires both deployment configuration and an administrator action:
+
+1. Set `Daybreak__EnableApi=true` and, when MCP is wanted, `Daybreak__EnableMcp=true` in the container configuration.
+2. Restart Daybreak, sign in to configuration, and open **Settings**.
+3. Generate an API key, copy it immediately, select **Enable API**, and save settings.
+4. To use MCP, optionally generate and copy an MCP key, select **Enable MCP**, and save settings.
+
+The API base URL is `/api/v1`. API clients send `Authorization: Bearer <api-key>`. It provides the authoritative board, occurrence completion and undo, activities, one-off tasks, settings, schedule preview, and history endpoints.
+
+The MCP Streamable HTTP URL is `/mcp`. It exposes corresponding narrowly named tools. MCP depends on enabled API access and an active API key. Its own key is optional: if no MCP key exists, an enabled MCP endpoint accepts unauthenticated clients that can reach it. Administration displays a warning for that trusted-network-only mode.
+
+Generating a replacement key immediately revokes the previous key. Plaintext keys are displayed only when generated; Daybreak stores one-way hashes and non-secret suffixes. Endpoint links never contain credentials.
+
+See [API and MCP automation](docs/automation.md) for endpoint, tool, client-configuration, concurrency, and rotation details.
+
 ## Security and privacy
 
 - The dashboard intentionally has no authentication in the MVP.
@@ -76,6 +96,8 @@ Database migrations run automatically at startup and are forward-only. Back up t
 - Password comparison is constant-time; the password itself is not stored in SQLite.
 - Changing the configured password invalidates existing administrator sessions.
 - Activity titles and history stay in the self-hosted SQLite database.
+- API and MCP are unavailable until their container flags and administration checkboxes are both enabled. Do not expose unauthenticated MCP beyond a trusted network.
+- Automation access records credential suffixes and request outcomes without recording keys or household content.
 - No telemetry, email, web push, browser notification, or mandatory cloud account is used.
 - Holiday dates are calculated locally from the vendored Nager.Date source; Daybreak does not contact a holiday API.
 
