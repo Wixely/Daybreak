@@ -16,7 +16,7 @@ public sealed class HistoryService(
         var today = LocalTimeResolver.Today(clock, timeZone);
         await using var connection = await connections.OpenAsync();
         var rows = (await connection.QueryAsync<HistoryRow>("""
-            SELECT Id, TitleSnapshot AS Title, NominalDate, EffectiveDate, State, DeadlineUtc, CompletedAtUtc
+            SELECT Id, TitleSnapshot AS Title, NominalDate, EffectiveDate, AdjustmentDescriptionSnapshot, State, DeadlineUtc, CompletedAtUtc
             FROM Occurrences
             WHERE State IN (@Completed, @Expired) AND NominalDate <= @Today
             ORDER BY NominalDate DESC, COALESCE(CompletedAtUtc, ActionWindowEndUtc) DESC
@@ -94,6 +94,7 @@ public sealed class HistoryService(
         row.Title,
         DateOnly.Parse(row.NominalDate),
         DateOnly.Parse(row.EffectiveDate),
+        row.AdjustmentDescriptionSnapshot,
         row.State,
         row.DeadlineUtc is null ? null : TimeZoneInfo.ConvertTime(DateTimeOffset.Parse(row.DeadlineUtc), timeZone),
         row.CompletedAtUtc is null ? null : TimeZoneInfo.ConvertTime(DateTimeOffset.Parse(row.CompletedAtUtc), timeZone));
@@ -109,13 +110,14 @@ public sealed class HistoryService(
         string Title,
         string NominalDate,
         string EffectiveDate,
+        string? AdjustmentDescriptionSnapshot,
         OccurrenceState State,
         string? DeadlineUtc,
         string? CompletedAtUtc)
     {
         public HistoryRow() : this(
             string.Empty, string.Empty, string.Empty, string.Empty,
-            OccurrenceState.Pending, null, null)
+            null, OccurrenceState.Pending, null, null)
         { }
     }
 

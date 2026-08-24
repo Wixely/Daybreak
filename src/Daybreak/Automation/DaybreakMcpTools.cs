@@ -107,7 +107,7 @@ public sealed class DaybreakMcpTools
     }
 
     [McpServerTool(Name = "preview_schedule", UseStructuredContent = true)]
-    [Description("Previews nominal and holiday-adjusted dates, including collisions, without saving.")]
+    [Description("Previews the plain-English schedule and occurrence visibility, urgency, deadline, bleed, holiday adjustment, and collision facts without saving.")]
     public static Task<SchedulePreviewResult> PreviewScheduleAsync(
         AgentOperations operations,
         [Description("Activity schedule to preview.")] ActivityWriteRequest activity,

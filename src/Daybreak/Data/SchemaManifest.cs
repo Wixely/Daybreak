@@ -4,7 +4,7 @@ public sealed record DatabaseMigration(int Version, string Name, string Sql);
 
 public static class SchemaManifest
 {
-    public const int CurrentVersion = 4;
+    public const int CurrentVersion = 5;
 
     public static IReadOnlyList<DatabaseMigration> Migrations { get; } =
     [
@@ -166,6 +166,18 @@ public static class SchemaManifest
 
             CREATE INDEX IX_AgentAccessEvents_OccurredAtUtc
                 ON AgentAccessEvents (OccurredAtUtc DESC);
+            """),
+        new(5, "Explainable weekday holiday adjustments", """
+            ALTER TABLE Activities
+            ADD COLUMN HolidayTargetWeekday INTEGER NULL CHECK (HolidayTargetWeekday IS NULL OR HolidayTargetWeekday BETWEEN 0 AND 6);
+
+            ALTER TABLE Occurrences
+            ADD COLUMN AdjustmentDescriptionSnapshot TEXT NULL;
+
+            UPDATE Occurrences
+            SET AdjustmentDescriptionSnapshot =
+                'This occurrence moved from ' || NominalDate || ' to ' || EffectiveDate || ' under its holiday rule.'
+            WHERE NominalDate <> EffectiveDate;
             """),
     ];
 }

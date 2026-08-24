@@ -23,6 +23,8 @@ Daybreak is a self-hosted household dashboard for recurring activities and one-o
 - Synchronizes completion, undo, expiry, rollover, and configuration changes across open browser sessions.
 - Offers an experimental, per-browser keep-awake preference using locally generated silent audio.
 - Adjusts schedules around holidays calculated by a vendored, fully offline Nager.Date provider.
+- Supports explicit holiday moves such as “Monday holiday → previous Saturday,” with plain-English records and concrete examples.
+- Simulates show-early, urgency, deadlines, recurrence overlap, and midnight bleed across a three-day administration timeline.
 - Reports completion rate, on-time/late/unfinished results, weekly trends, and per-activity summaries.
 - Protects configuration with one Docker-image password while leaving the dashboard URL open.
 - Optionally exposes a versioned bearer-key API and a Streamable HTTP MCP server after deployment and administrator activation.

@@ -19,6 +19,7 @@ public sealed record ActivityWriteRequest(
     int? BleedOverrideMinutes,
     int ShowAheadHours,
     HolidayPolicy HolidayPolicy,
+    int? HolidayTargetWeekday,
     bool IsPaused);
 
 public sealed record OneOffTaskWriteRequest(
@@ -46,7 +47,13 @@ public sealed record SavedEntityResult(string Id);
 public sealed record SchedulePreviewItem(
     DateOnly NominalDate,
     DateOnly? EffectiveDate,
+    DateTimeOffset? VisibleFrom,
     DateTimeOffset? Deadline,
-    bool Collides);
+    DateTimeOffset? UrgentFrom,
+    DateTimeOffset? ActionWindowEnd,
+    bool Collides,
+    string AdjustmentExplanation);
 
-public sealed record SchedulePreviewResult(IReadOnlyList<SchedulePreviewItem> Occurrences);
+public sealed record SchedulePreviewResult(
+    ScheduleExplanation Explanation,
+    IReadOnlyList<SchedulePreviewItem> Occurrences);

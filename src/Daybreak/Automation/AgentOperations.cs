@@ -10,6 +10,7 @@ public sealed class AgentOperations(
     SettingsService settings,
     HistoryService history,
     OccurrenceGenerator generator,
+    ScheduleProjector projector,
     IHolidayProvider holidays)
 {
     public Task<BoardSnapshot> GetBoardAsync(CancellationToken cancellationToken = default) =>
@@ -47,6 +48,7 @@ public sealed class AgentOperations(
             request.BleedOverrideMinutes,
             request.ShowAheadHours,
             request.HolidayPolicy,
+            request.HolidayTargetWeekday,
             request.IsPaused,
             existing?.ArchivedAtUtc,
             existing?.CreatedAtUtc ?? string.Empty,
@@ -168,6 +170,12 @@ public sealed class AgentOperations(
             throw new ArgumentException("A valid activity start date is required.", nameof(request));
         }
 
+        if (request.HolidayPolicy is HolidayPolicy.MoveToPreviousWeekday or HolidayPolicy.MoveToNextWeekday &&
+            request.HolidayTargetWeekday is not (>= 0 and <= 6))
+        {
+            throw new ArgumentException("A target weekday is required for this holiday rule.", nameof(request));
+        }
+
         var activity = new Activity(
             string.Empty,
             request.Title,
@@ -186,12 +194,12 @@ public sealed class AgentOperations(
             request.BleedOverrideMinutes,
             request.ShowAheadHours,
             request.HolidayPolicy,
+            request.HolidayTargetWeekday,
             request.IsPaused,
             null,
             string.Empty,
             string.Empty);
         var household = await settings.GetAsync();
-        var timeZone = TimeZoneInfo.FindSystemTimeZoneById(household.TimeZoneId);
         var nominalDates = RecurrenceCalculator.Preview(activity, startDate, count);
         var holidayDates = new HashSet<DateOnly>();
         if (request.HolidayPolicy != HolidayPolicy.Keep && household.HolidayCountryCode is not null && nominalDates.Count > 0)
@@ -206,30 +214,24 @@ public sealed class AgentOperations(
             }
         }
 
-        var adjusted = nominalDates
-            .Select(nominal => new
-            {
-                Nominal = nominal,
-                Effective = OccurrenceGenerator.AdjustForHoliday(request.HolidayPolicy, nominal, holidayDates),
-            })
-            .ToList();
-        var collisions = adjusted
-            .Where(item => item.Effective is not null)
-            .GroupBy(item => item.Effective)
-            .Where(group => group.Count() > 1)
-            .Select(group => group.Key)
-            .ToHashSet();
-        return new SchedulePreviewResult(adjusted
+        var projected = projector.ProjectActivity(
+            activity,
+            nominalDates,
+            holidayDates,
+            household.DefaultBleedMinutes,
+            TimeZoneInfo.FindSystemTimeZoneById(household.TimeZoneId));
+        return new SchedulePreviewResult(
+            projector.Explain(activity, household.DefaultBleedMinutes),
+            projected
             .Select(item => new SchedulePreviewItem(
-                item.Nominal,
-                item.Effective,
-                item.Effective is not null && request.DeadlineMinutes is not null
-                    ? LocalTimeResolver.Resolve(
-                        item.Effective.Value,
-                        TimeOnly.MinValue.AddMinutes(request.DeadlineMinutes.Value),
-                        timeZone)
-                    : null,
-                item.Effective is not null && collisions.Contains(item.Effective)))
+                item.NominalDate,
+                item.EffectiveDate,
+                item.VisibleFrom,
+                item.Deadline,
+                item.UrgentFrom,
+                item.ActionWindowEnd,
+                item.Collides,
+                item.AdjustmentExplanation))
             .ToList());
     }
 }

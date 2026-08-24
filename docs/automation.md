@@ -44,9 +44,11 @@ The v1 endpoints are:
 | `GET` | `/api/v1/settings` | Read household scheduling settings |
 | `PUT` | `/api/v1/settings` | Update household scheduling settings |
 | `GET` | `/api/v1/history?recentLimit=100` | Read history and summaries; limit is clamped to 1–500 |
-| `POST` | `/api/v1/schedule-preview?count=8` | Preview nominal, adjusted, suppressed, and colliding dates |
+| `POST` | `/api/v1/schedule-preview?count=8` | Preview explanations, visibility, urgency, deadlines, bleed, adjusted dates, suppression, and collisions |
 
-Enums use their names, such as `Daily`, `BeforeAndAfterDeadline`, and `MoveLater`. Create and update bodies follow the fields returned by the corresponding list endpoint, excluding identifiers and server timestamps.
+Enums use their names, such as `Daily`, `BeforeAndAfterDeadline`, and `MoveLater`. Holiday policies additionally include `MoveToPreviousWeekday` and `MoveToNextWeekday`; these require `holidayTargetWeekday` from `0` (Sunday) through `6` (Saturday). A weekday target is authoritative even when that target is also marked as a holiday, and the preview reports a warning in its adjustment explanation.
+
+Create and update bodies follow the fields returned by the corresponding list endpoint, excluding identifiers and server timestamps. Schedule preview returns the generated plain-English rule record and, for every occurrence, `nominalDate`, `effectiveDate`, `visibleFrom`, `urgentFrom`, `deadline`, `actionWindowEnd`, collision state, and its adjustment explanation. These are calculated by the same projection code used to materialize dashboard occurrences.
 
 Completion and undo are conditional. Send the occurrence's current `version`; the response reports whether the transition was applied and always includes a fresh authoritative board. Clients should converge on that returned snapshot when another client won the race.
 

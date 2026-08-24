@@ -25,3 +25,5 @@ Completed and expired occurrences are historical records and are never rewritten
 ## Review trigger
 
 Review if households need business-day calendars, weekend exclusion, collision merging, or provider-specific observance rules.
+
+The selected-weekday extension and shared explanation/projection model are recorded in [ADR 0005](0005-explainable-schedule-projection.md).

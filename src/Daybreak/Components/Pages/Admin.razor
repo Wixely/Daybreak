@@ -9,6 +9,7 @@
 @inject AgentAccessService AgentAccess
 @inject TimeProvider Clock
 @inject IHolidayProvider HolidayProvider
+@inject ScheduleProjector ScheduleProjector
 @inject IJSRuntime JavaScript
 @inject NavigationManager Navigation
 @using Daybreak.Data
@@ -56,7 +57,7 @@ else if (_tab == "activities")
                 </div>
                 <div class="panel-actions">
                     <button class="button button-secondary" type="button" @onclick="ToggleArchivedAsync">@(_showArchived ? "Hide archived" : "Show archived")</button>
-                    <button class="button button-secondary" type="button" @onclick="NewActivity">New</button>
+                    <button class="button button-secondary" type="button" @onclick="NewActivityAsync">New</button>
                 </div>
             </div>
             @if (_activities.Count == 0)
@@ -68,7 +69,7 @@ else if (_tab == "activities")
                 <div class="item-list">
                     @foreach (var activity in _activities)
                     {
-                        <button class="list-item @(_activity.Id == activity.Id ? "selected" : null)" type="button" @onclick="() => EditActivity(activity)">
+                        <button class="list-item @(_activity.Id == activity.Id ? "selected" : null)" type="button" @onclick="() => EditActivityAsync(activity)">
                             <span>
                                 <strong>@activity.Title</strong>
                                 <small>@ScheduleSummary(activity)</small>
@@ -196,6 +197,19 @@ else if (_tab == "activities")
                             }
                         </InputSelect>
                     </div>
+                    @if (_activity.HolidayPolicy is HolidayPolicy.MoveToPreviousWeekday or HolidayPolicy.MoveToNextWeekday)
+                    {
+                        <div class="field">
+                            <label for="holiday-target-weekday">Target weekday</label>
+                            <InputSelect id="holiday-target-weekday" @bind-Value="_activity.HolidayTargetWeekday">
+                                @foreach (var day in Enum.GetValues<DayOfWeek>())
+                                {
+                                    <option value="@((int)day)">@day</option>
+                                }
+                            </InputSelect>
+                            <small>The selected weekday is authoritative; the preview warns if it is also a holiday.</small>
+                        </div>
+                    }
                     <label class="toggle-field span-2">
                         <InputCheckbox @bind-Value="_activity.IsPaused" />
                         <span>Pause this activity</span>
@@ -205,8 +219,14 @@ else if (_tab == "activities")
                     <span>Next dates</span>
                     <strong>@PreviewDates()</strong>
                     <small>@_adjustedPreview</small>
-                    <button class="preview-button" type="button" @onclick="PreviewAdjustedDatesAsync">Preview holiday adjustments</button>
+                    <button class="preview-button" type="button" @onclick="RefreshActivityPreviewAsync">Refresh explanation and simulation</button>
                 </div>
+                <ScheduleSimulator Title="@ActivitySimulationTitle"
+                                   TimeZoneId="@SimulationTimeZone"
+                                   Explanation="@_activityExplanation"
+                                   Items="@_activityProjection"
+                                   InitialWindowStart="@_activityWindowStart"
+                                   RefreshRequested="RefreshActivityPreviewAsync" />
                 <div class="form-actions">
                     <button class="button button-primary" type="submit" disabled="@(_saving || _activity.ArchivedAtUtc is not null)">Save activity</button>
                     @if (_activity.ArchivedAtUtc is not null)
@@ -276,6 +296,12 @@ else if (_tab == "one-offs")
                         <small>0 shows it on the scheduled day; higher values allow completion earlier.</small>
                     </div>
                 </div>
+                <ScheduleSimulator Title="@OneOffSimulationTitle"
+                                   TimeZoneId="@SimulationTimeZone"
+                                   Explanation="@_oneOffExplanation"
+                                   Items="@_oneOffProjection"
+                                   InitialWindowStart="@_oneOffWindowStart"
+                                   RefreshRequested="RefreshOneOffPreview" />
                 <div class="form-actions">
                     <button class="button button-primary" type="submit" disabled="@_saving">Save one-off task</button>
                     @if (_oneOff.Id is not null)
@@ -536,7 +562,7 @@ else
                     @foreach (var entry in FilteredOccurrences)
                     {
                         <tr>
-                            <td><strong>@entry.Title</strong>@if (entry.NominalDate != entry.EffectiveDate){<small>Moved from @entry.NominalDate.ToString("d MMM")</small>}</td>
+                            <td><strong>@entry.Title</strong>@if (entry.NominalDate != entry.EffectiveDate){<small>@(entry.AdjustmentDescription ?? $"Moved from {entry.NominalDate:d MMM}")</small>}</td>
                             <td>@entry.EffectiveDate.ToString("d MMM yyyy")</td>
                             <td><span class="history-status @entry.Timing.ToLowerInvariant().Replace(" ", "-")">@entry.Timing</span></td>
                             <td>@(entry.CompletedAt?.ToString("d MMM, HH:mm") ?? "—")</td>
@@ -592,12 +618,21 @@ else
     private string? _newMcpKey;
     private bool _messageIsError;
     private string _adjustedPreview = "Use the preview to check moved, suppressed, or colliding dates.";
+    private ScheduleExplanation _activityExplanation = new("Complete the schedule to see its recurrence.", "", "", "", "");
+    private ScheduleExplanation _oneOffExplanation = new("Choose a date to see how this task works.", "", "", "", "");
+    private IReadOnlyList<ScheduleProjectionItem> _activityProjection = [];
+    private IReadOnlyList<ScheduleProjectionItem> _oneOffProjection = [];
+    private DateOnly _activityWindowStart;
+    private DateOnly _oneOffWindowStart;
     private ElementReference _keepAwakeToggle;
     private IJSObjectReference? _dashboardModule;
     private static string ApplicationVersion => typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "development";
     private string ApiUrl => $"{Navigation.BaseUri.TrimEnd('/')}/api/v1";
     private string McpUrl => $"{Navigation.BaseUri.TrimEnd('/')}/mcp";
     private IReadOnlyList<HolidaySubdivisionOption> HolidaySubdivisions => HolidayCatalog.GetSubdivisions(_settings.CountryCode);
+    private string SimulationTimeZone => string.IsNullOrWhiteSpace(_settings.TimeZoneId) ? "UTC" : _settings.TimeZoneId;
+    private string ActivitySimulationTitle => string.IsNullOrWhiteSpace(_activity.Title) ? "Activity" : _activity.Title;
+    private string OneOffSimulationTitle => string.IsNullOrWhiteSpace(_oneOff.Title) ? "One-off task" : _oneOff.Title;
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
@@ -637,6 +672,8 @@ else
             _oneOff = OneOffForm.Create(HouseholdToday);
         }
         _history = await History.GetAsync();
+        await RefreshActivityPreviewAsync();
+        RefreshOneOffPreview();
         _loading = false;
     }
 
@@ -659,10 +696,26 @@ else
         _history = await History.GetAsync();
         _tab = HistoryTab;
     }
-    private void NewActivity() => _activity = ActivityForm.Create(HouseholdToday);
-    private void NewOneOff() => _oneOff = OneOffForm.Create(HouseholdToday);
-    private void EditActivity(Activity activity) => _activity = ActivityForm.From(activity);
-    private void EditOneOff(OneOffTask task) => _oneOff = OneOffForm.From(task);
+    private async Task NewActivityAsync()
+    {
+        _activity = ActivityForm.Create(HouseholdToday);
+        await RefreshActivityPreviewAsync();
+    }
+    private void NewOneOff()
+    {
+        _oneOff = OneOffForm.Create(HouseholdToday);
+        RefreshOneOffPreview();
+    }
+    private async Task EditActivityAsync(Activity activity)
+    {
+        _activity = ActivityForm.From(activity);
+        await RefreshActivityPreviewAsync();
+    }
+    private void EditOneOff(OneOffTask task)
+    {
+        _oneOff = OneOffForm.From(task);
+        RefreshOneOffPreview();
+    }
 
     private async Task ToggleArchivedAsync()
     {
@@ -682,6 +735,7 @@ else
             await Generator.EnsureRollingHorizonAsync();
             _activities = (await Activities.ListAsync(_showArchived)).ToList();
             _activity = ActivityForm.From((await Activities.GetAsync(id))!);
+            await RefreshActivityPreviewAsync();
         }, "Activity saved.");
     }
 
@@ -696,7 +750,7 @@ else
         {
             await Activities.ArchiveAsync(_activity.Id);
             _activities = (await Activities.ListAsync(_showArchived)).ToList();
-            _activity = ActivityForm.Create(HouseholdToday);
+            await NewActivityAsync();
         }, "Activity archived.");
     }
 
@@ -713,6 +767,7 @@ else
             await Generator.EnsureRollingHorizonAsync();
             _activities = (await Activities.ListAsync(_showArchived)).ToList();
             _activity = ActivityForm.From((await Activities.GetAsync(_activity.Id))!);
+            await RefreshActivityPreviewAsync();
         }, "Activity restored.");
     }
 
@@ -724,6 +779,7 @@ else
             await Generator.EnsureRollingHorizonAsync();
             _oneOffTasks = (await OneOffTasks.ListAsync()).ToList();
             _oneOff = OneOffForm.From(_oneOffTasks.Single(item => item.Id == id));
+            RefreshOneOffPreview();
         }, "One-off task saved.");
     }
 
@@ -741,7 +797,7 @@ else
                 throw new InvalidOperationException("Completed or expired tasks are retained in history and cannot be deleted.");
             }
             _oneOffTasks = (await OneOffTasks.ListAsync()).ToList();
-            _oneOff = OneOffForm.Create(HouseholdToday);
+            NewOneOff();
         }, "One-off task deleted.");
     }
 
@@ -751,6 +807,8 @@ else
         await AgentAccess.UpdateEnabledAsync(_settings.ApiEnabled, _settings.McpEnabled);
         _agentAccess = await AgentAccess.GetAsync();
         await Generator.EnsureRollingHorizonAsync();
+        await RefreshActivityPreviewAsync();
+        RefreshOneOffPreview();
     }, "Household settings saved.");
 
     private async Task GenerateApiKeyAsync() => await RunSaveAsync(async () =>
@@ -823,14 +881,22 @@ else
         }
     }
 
-    private async Task PreviewAdjustedDatesAsync()
+    private async Task RefreshActivityPreviewAsync()
     {
         try
         {
-            var nominalDates = RecurrenceCalculator.Preview(_activity.ToActivity(), HouseholdToday, 8);
+            var activity = _activity.ToActivity();
+            var candidateFrom = HouseholdToday.AddDays(-21);
+            var candidateThrough = HouseholdToday.AddDays(370);
+            var nominalDates = Enumerable.Range(0, candidateThrough.DayNumber - candidateFrom.DayNumber + 1)
+                .Select(offset => candidateFrom.AddDays(offset))
+                .Where(date => RecurrenceCalculator.OccursOn(activity, date))
+                .ToList();
             if (nominalDates.Count == 0)
             {
-                _adjustedPreview = "No occurrences fall within the next two years.";
+                _adjustedPreview = "No occurrences fall within the next year.";
+                _activityProjection = [];
+                _activityExplanation = ScheduleProjector.Explain(activity, _settings.DefaultBleedMinutes);
                 return;
             }
 
@@ -846,28 +912,56 @@ else
                 }
             }
 
-            var adjusted = nominalDates.Select(nominal => new
+            _activityProjection = ScheduleProjector.ProjectActivity(
+                activity,
+                nominalDates,
+                holidayDates,
+                _settings.DefaultBleedMinutes,
+                TimeZoneInfo.FindSystemTimeZoneById(SimulationTimeZone));
+            _activityExplanation = ScheduleProjector.Explain(activity, _settings.DefaultBleedMinutes);
+            var next = _activityProjection.Where(item => item.NominalDate >= HouseholdToday).Take(8).ToList();
+            if (next.Count == 0)
             {
-                Nominal = nominal,
-                Effective = OccurrenceGenerator.AdjustForHoliday(_activity.HolidayPolicy, nominal, holidayDates),
-            }).ToList();
-            var collisions = adjusted
-                .Where(item => item.Effective is not null)
-                .GroupBy(item => item.Effective)
-                .Where(group => group.Count() > 1)
-                .Select(group => group.Key)
-                .ToHashSet();
-            _adjustedPreview = string.Join(" · ", adjusted.Select(item => item.Effective switch
+                _adjustedPreview = "No upcoming occurrences in the next year.";
+                _activityWindowStart = _activityProjection[^1].EffectiveDate ?? _activityProjection[^1].NominalDate;
+                return;
+            }
+            _adjustedPreview = string.Join(" · ", next.Select(item => item.EffectiveDate switch
             {
-                null => $"{item.Nominal:d MMM} suppressed",
-                var effective when effective != item.Nominal =>
-                    $"{item.Nominal:d MMM} → {effective:d MMM}{(collisions.Contains(effective) ? " (collision)" : string.Empty)}",
-                var effective => $"{effective:d MMM}{(collisions.Contains(effective) ? " (collision)" : string.Empty)}",
+                null => $"{item.NominalDate:d MMM} suppressed",
+                var effective when effective != item.NominalDate =>
+                    $"{item.NominalDate:d MMM} → {effective:d MMM}{(item.Collides ? " (collision)" : string.Empty)}",
+                var effective => $"{effective:d MMM}{(item.Collides ? " (collision)" : string.Empty)}",
             }));
+            var focus = next.FirstOrDefault(item => !string.IsNullOrWhiteSpace(item.AdjustmentExplanation)) ?? next.First();
+            _activityWindowStart = focus.EffectiveDate is { } effective && Math.Abs(effective.DayNumber - focus.NominalDate.DayNumber) <= 2
+                ? DateOnly.FromDayNumber(Math.Min(effective.DayNumber, focus.NominalDate.DayNumber))
+                : focus.EffectiveDate ?? focus.NominalDate;
         }
         catch (Exception exception)
         {
             _adjustedPreview = $"Preview unavailable: {exception.Message}";
+            _activityProjection = [];
+        }
+    }
+
+    private void RefreshOneOffPreview()
+    {
+        try
+        {
+            var task = _oneOff.ToTask();
+            var timeZone = TimeZoneInfo.FindSystemTimeZoneById(SimulationTimeZone);
+            var projection = ScheduleProjector.ProjectOneOff(task, _settings.DefaultBleedMinutes, timeZone);
+            _oneOffProjection = [projection];
+            _oneOffExplanation = ScheduleProjector.Explain(task, _settings.DefaultBleedMinutes);
+            _oneOffWindowStart = projection.VisibleFrom is { } visible
+                ? DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(visible, timeZone).DateTime)
+                : DateOnly.Parse(task.ScheduledDate);
+        }
+        catch
+        {
+            _oneOffProjection = [];
+            _oneOffExplanation = new("Choose a valid date to see how this task works.", "", "", "", "");
         }
     }
 
@@ -884,8 +978,10 @@ else
     private static string HolidayLabel(HolidayPolicy policy) => policy switch
     {
         HolidayPolicy.Suppress => "Do not generate",
-        HolidayPolicy.MoveEarlier => "Move earlier",
-        HolidayPolicy.MoveLater => "Move later",
+        HolidayPolicy.MoveEarlier => "Move to previous non-holiday date",
+        HolidayPolicy.MoveLater => "Move to next non-holiday date",
+        HolidayPolicy.MoveToPreviousWeekday => "Move to previous selected weekday",
+        HolidayPolicy.MoveToNextWeekday => "Move to next selected weekday",
         _ => "Keep the date",
     };
 
@@ -946,6 +1042,7 @@ else
         [Range(0, 720)] public int? BleedOverrideMinutes { get; set; }
         [Range(0, 168)] public int ShowAheadHours { get; set; }
         public HolidayPolicy HolidayPolicy { get; set; }
+        [Range(0, 6)] public int? HolidayTargetWeekday { get; set; } = (int)DayOfWeek.Saturday;
         public bool IsPaused { get; set; }
         public string? ArchivedAtUtc { get; set; }
         public string? CreatedAtUtc { get; set; }
@@ -959,14 +1056,17 @@ else
             Ordinal = value.Ordinal, Weekday = value.Weekday, StartDate = value.StartDate, EndDate = value.EndDate,
             DeadlineTime = FormatTime(value.DeadlineMinutes), UrgencyMode = value.UrgencyMode,
             WarningMinutes = value.WarningMinutes, BleedOverrideMinutes = value.BleedOverrideMinutes,
-            ShowAheadHours = value.ShowAheadHours, HolidayPolicy = value.HolidayPolicy, IsPaused = value.IsPaused, ArchivedAtUtc = value.ArchivedAtUtc,
+            ShowAheadHours = value.ShowAheadHours, HolidayPolicy = value.HolidayPolicy,
+            HolidayTargetWeekday = value.HolidayTargetWeekday ?? (int)DayOfWeek.Saturday,
+            IsPaused = value.IsPaused, ArchivedAtUtc = value.ArchivedAtUtc,
             CreatedAtUtc = value.CreatedAtUtc,
         };
 
         public Activity ToActivity() => new(
             Id ?? string.Empty, Title, Notes, RecurrenceKind, Interval, DaysOfWeekMask, DayOfMonth, Ordinal, Weekday,
             StartDate, string.IsNullOrWhiteSpace(EndDate) ? null : EndDate, ParseTime(DeadlineTime), UrgencyMode,
-            WarningMinutes, BleedOverrideMinutes, ShowAheadHours, HolidayPolicy, IsPaused, ArchivedAtUtc, CreatedAtUtc ?? string.Empty, string.Empty);
+            WarningMinutes, BleedOverrideMinutes, ShowAheadHours, HolidayPolicy, HolidayTargetWeekday,
+            IsPaused, ArchivedAtUtc, CreatedAtUtc ?? string.Empty, string.Empty);
     }
 
     private sealed class OneOffForm

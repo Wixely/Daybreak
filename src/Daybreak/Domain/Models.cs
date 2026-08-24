@@ -23,6 +23,8 @@ public enum HolidayPolicy
     Suppress = 1,
     MoveEarlier = 2,
     MoveLater = 3,
+    MoveToPreviousWeekday = 4,
+    MoveToNextWeekday = 5,
 }
 
 public enum OccurrenceState
@@ -63,6 +65,7 @@ public sealed record Activity(
     int? BleedOverrideMinutes,
     int ShowAheadHours,
     HolidayPolicy HolidayPolicy,
+    int? HolidayTargetWeekday,
     bool IsPaused,
     string? ArchivedAtUtc,
     string CreatedAtUtc,
@@ -71,7 +74,7 @@ public sealed record Activity(
     public Activity() : this(
         string.Empty, string.Empty, null, RecurrenceKind.Daily, 1, 0, null, null, null,
         string.Empty, null, null, UrgencyMode.None, 30, null, 0, HolidayPolicy.Keep,
-        false, null, string.Empty, string.Empty)
+        null, false, null, string.Empty, string.Empty)
     { }
 }
 
@@ -105,6 +108,7 @@ public sealed record Occurrence(
     string ScheduleLabelSnapshot,
     string NominalDate,
     string EffectiveDate,
+    string? AdjustmentDescriptionSnapshot,
     string? VisibleFromUtc,
     string? DeadlineUtc,
     string ActionWindowEndUtc,
@@ -118,7 +122,7 @@ public sealed record Occurrence(
 {
     public Occurrence() : this(
         string.Empty, null, null, string.Empty, null, string.Empty, string.Empty, string.Empty,
-        null, null, string.Empty, UrgencyMode.None, 30, OccurrenceState.Pending,
+        null, null, null, string.Empty, UrgencyMode.None, 30, OccurrenceState.Pending,
         null, null, 0, string.Empty)
     { }
 }
@@ -166,6 +170,7 @@ public sealed record HistoryEntry(
     string Title,
     DateOnly NominalDate,
     DateOnly EffectiveDate,
+    string? AdjustmentDescription,
     OccurrenceState State,
     DateTimeOffset? Deadline,
     DateTimeOffset? CompletedAt)

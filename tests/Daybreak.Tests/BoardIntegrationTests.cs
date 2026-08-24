@@ -308,10 +308,44 @@ public sealed class BoardIntegrationTests
         Assert.AreEqual(3, colliding.Select(item => item.Id).Distinct().Count());
     }
 
+    [TestMethod]
+    public async Task WeekdayHolidayMoveIsPersistedWithItsExplanation()
+    {
+        var settings = new SettingsService(_connections, _changes);
+        await settings.UpdateAsync("Europe/London", 120, "GB", null);
+        var activities = new ActivityService(_connections, _changes, _clock);
+        var activity = CreateDailyActivity(startDate: "2026-08-31") with
+        {
+            Title = "Bins",
+            RecurrenceKind = RecurrenceKind.SelectedWeekdays,
+            DaysOfWeekMask = RecurrenceCalculator.DayMask(DayOfWeek.Monday),
+            HolidayPolicy = HolidayPolicy.MoveToPreviousWeekday,
+            HolidayTargetWeekday = (int)DayOfWeek.Saturday,
+        };
+        var id = await activities.SaveAsync(activity);
+        var generator = new OccurrenceGenerator(
+            _connections,
+            new StaticHolidayProvider(new HashSet<DateOnly> { new(2026, 8, 31) }),
+            _changes,
+            _clock);
+
+        await generator.EnsureAsync(new DateOnly(2026, 8, 31), new DateOnly(2026, 8, 31));
+
+        await using var connection = await _connections.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT NominalDate, EffectiveDate, AdjustmentDescriptionSnapshot FROM Occurrences WHERE ActivityId = $id";
+        command.Parameters.AddWithValue("$id", id);
+        await using var reader = await command.ExecuteReaderAsync();
+        Assert.IsTrue(await reader.ReadAsync());
+        Assert.AreEqual("2026-08-31", reader.GetString(0));
+        Assert.AreEqual("2026-08-29", reader.GetString(1));
+        StringAssert.Contains(reader.GetString(2), "Saturday 29 August 2026");
+    }
+
     private static Activity CreateDailyActivity(string startDate = "2026-08-19") => new(
         string.Empty, "Test routine", null, RecurrenceKind.Daily, 1, 0, null, null, null,
         startDate, null, 9 * 60, UrgencyMode.BeforeAndAfterDeadline, 30, null,
-        0, HolidayPolicy.Keep, false, null, string.Empty, string.Empty);
+        0, HolidayPolicy.Keep, null, false, null, string.Empty, string.Empty);
 
     private static OneOffTask CreateOneOff(string title, int? deadlineMinutes) => new(
         string.Empty, title, null, "2026-08-19", deadlineMinutes, UrgencyMode.None,

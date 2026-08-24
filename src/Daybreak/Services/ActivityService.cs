@@ -36,11 +36,11 @@ public sealed class ActivityService(
             INSERT INTO Activities (
                 Id, Title, Notes, RecurrenceKind, Interval, DaysOfWeekMask, DayOfMonth, Ordinal, Weekday,
                 StartDate, EndDate, DeadlineMinutes, UrgencyMode, WarningMinutes, BleedOverrideMinutes,
-                ShowAheadHours, HolidayPolicy, IsPaused, ArchivedAtUtc, CreatedAtUtc, UpdatedAtUtc)
+                ShowAheadHours, HolidayPolicy, HolidayTargetWeekday, IsPaused, ArchivedAtUtc, CreatedAtUtc, UpdatedAtUtc)
             VALUES (
                 @Id, @Title, @Notes, @RecurrenceKind, @Interval, @DaysOfWeekMask, @DayOfMonth, @Ordinal, @Weekday,
                 @StartDate, @EndDate, @DeadlineMinutes, @UrgencyMode, @WarningMinutes, @BleedOverrideMinutes,
-                @ShowAheadHours, @HolidayPolicy, @IsPaused, @ArchivedAtUtc, @CreatedAtUtc, @UpdatedAtUtc)
+                @ShowAheadHours, @HolidayPolicy, @HolidayTargetWeekday, @IsPaused, @ArchivedAtUtc, @CreatedAtUtc, @UpdatedAtUtc)
             ON CONFLICT(Id) DO UPDATE SET
                 Title = excluded.Title,
                 Notes = excluded.Notes,
@@ -58,6 +58,7 @@ public sealed class ActivityService(
                 BleedOverrideMinutes = excluded.BleedOverrideMinutes,
                 ShowAheadHours = excluded.ShowAheadHours,
                 HolidayPolicy = excluded.HolidayPolicy,
+                HolidayTargetWeekday = excluded.HolidayTargetWeekday,
                 IsPaused = excluded.IsPaused,
                 ArchivedAtUtc = excluded.ArchivedAtUtc,
                 UpdatedAtUtc = excluded.UpdatedAtUtc;
@@ -80,6 +81,7 @@ public sealed class ActivityService(
             activity.BleedOverrideMinutes,
             activity.ShowAheadHours,
             activity.HolidayPolicy,
+            activity.HolidayTargetWeekday,
             activity.IsPaused,
             activity.ArchivedAtUtc,
             CreatedAtUtc = string.IsNullOrWhiteSpace(activity.CreatedAtUtc) ? now : activity.CreatedAtUtc,
@@ -158,6 +160,12 @@ public sealed class ActivityService(
             (activity.Ordinal is not (>= 1 and <= 5) || activity.Weekday is not (>= 0 and <= 6)))
         {
             throw new ArgumentException("Choose a valid monthly weekday occurrence.", nameof(activity));
+        }
+
+        if (activity.HolidayPolicy is HolidayPolicy.MoveToPreviousWeekday or HolidayPolicy.MoveToNextWeekday &&
+            activity.HolidayTargetWeekday is not (>= 0 and <= 6))
+        {
+            throw new ArgumentException("Choose a target weekday for the holiday rule.", nameof(activity));
         }
     }
 

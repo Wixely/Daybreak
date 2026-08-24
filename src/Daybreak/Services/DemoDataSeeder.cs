@@ -138,6 +138,7 @@ public sealed class DemoDataSeeder(
             null,
             0,
             HolidayPolicy.Keep,
+            null,
             false,
             null,
             string.Empty,

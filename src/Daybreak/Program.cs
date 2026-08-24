@@ -1,6 +1,7 @@
 using Daybreak.Automation;
 using Daybreak.Components;
 using Daybreak.Data;
+using Daybreak.Domain;
 using Daybreak.Security;
 using Daybreak.Services;
 using Microsoft.AspNetCore.Antiforgery;
@@ -61,6 +62,7 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<AdminPasswordValidator>();
 builder.Services.AddSingleton<BoardChangeNotifier>();
+builder.Services.AddSingleton<ScheduleProjector>();
 builder.Services.AddSingleton<DatabaseConnectionFactory>();
 builder.Services.AddSingleton<MigrationRunner>();
 builder.Services.AddScoped<BoardService>();

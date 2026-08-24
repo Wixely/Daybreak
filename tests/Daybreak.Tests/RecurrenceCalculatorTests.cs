@@ -88,5 +88,5 @@ public sealed class RecurrenceCalculatorTests
         int? weekday = null) => new(
             "id", "Test", null, kind, interval, daysMask, dayOfMonth, ordinal, weekday,
             "2026-08-19", null, null, UrgencyMode.None, 30, null, 0, HolidayPolicy.Keep,
-            false, null, string.Empty, string.Empty);
+            null, false, null, string.Empty, string.Empty);
 }

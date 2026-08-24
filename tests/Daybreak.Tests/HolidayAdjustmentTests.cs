@@ -27,4 +27,14 @@ public sealed class HolidayAdjustmentTests
     [TestMethod]
     public void MoveEarlierUsesPreviousNonHolidayDate() =>
         Assert.AreEqual(new DateOnly(2026, 12, 24), OccurrenceGenerator.AdjustForHoliday(HolidayPolicy.MoveEarlier, new(2026, 12, 25), Holidays));
+
+    [TestMethod]
+    public void MoveToPreviousWeekdayDoesNotStopOnIntermediateNonHolidayDate() =>
+        Assert.AreEqual(
+            new DateOnly(2026, 8, 29),
+            ScheduleProjector.AdjustForHoliday(
+                HolidayPolicy.MoveToPreviousWeekday,
+                (int)DayOfWeek.Saturday,
+                new DateOnly(2026, 8, 31),
+                new HashSet<DateOnly> { new(2026, 8, 31) }));
 }

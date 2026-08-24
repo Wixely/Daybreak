@@ -53,6 +53,10 @@ public sealed class MigrationRunnerTests
             "SELECT COUNT(*) FROM pragma_table_info('OneOffTasks') WHERE name = 'ShowAheadHours'"));
         Assert.AreEqual(1, await connection.ExecuteScalarAsync<int>(
             "SELECT COUNT(*) FROM pragma_table_info('Occurrences') WHERE name = 'VisibleFromUtc'"));
+        Assert.AreEqual(1, await connection.ExecuteScalarAsync<int>(
+            "SELECT COUNT(*) FROM pragma_table_info('Activities') WHERE name = 'HolidayTargetWeekday'"));
+        Assert.AreEqual(1, await connection.ExecuteScalarAsync<int>(
+            "SELECT COUNT(*) FROM pragma_table_info('Occurrences') WHERE name = 'AdjustmentDescriptionSnapshot'"));
     }
 
     [TestMethod]
