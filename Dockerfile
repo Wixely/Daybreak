@@ -1,5 +1,6 @@
 # syntax=docker/dockerfile:1
 FROM mcr.microsoft.com/dotnet/sdk:10.0.400 AS build
+ARG VERSION
 WORKDIR /source
 
 COPY Directory.Build.props global.json Daybreak.slnx ./
@@ -16,7 +17,8 @@ RUN dotnet publish src/Daybreak/Daybreak.csproj \
     --configuration Release \
     --no-restore \
     --output /app/publish \
-    /p:UseAppHost=false
+    /p:UseAppHost=false \
+    ${VERSION:+/p:DaybreakVersion=$VERSION}
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0.11 AS runtime
 WORKDIR /app
