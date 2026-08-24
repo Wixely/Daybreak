@@ -1,0 +1,25 @@
+services:
+  daybreak:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: daybreak:local
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_HTTP_PORTS: "8080"
+      DAYBREAK_ADMIN_PASSWORD: "admin"
+      ConnectionStrings__Daybreak: "Data Source=/data/daybreak.db"
+      Daybreak__SeedDemoData: "false"
+      Daybreak__DataProtectionKeysPath: "/data/keys"
+      # These deployment gates reveal the matching controls in Admin > Settings.
+      # Access remains disabled until an administrator generates the required key
+      # and enables the surface in the application.
+      Daybreak__EnableApi: "false"
+      Daybreak__EnableMcp: "false"
+    volumes:
+      - daybreak-data:/data
+
+volumes:
+  daybreak-data:

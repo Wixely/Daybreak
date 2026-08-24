@@ -38,7 +38,7 @@ Daybreak supports Linux containers only. Docker development and production build
    ```
 
 2. Open <http://localhost:8080> for the dashboard.
-3. Open <http://localhost:8080/admin> and enter `daybreak`.
+3. Open <http://localhost:8080/admin> and enter `admin`.
 
 The Compose file stores SQLite data in the named `daybreak-data` volume. Removing or replacing the container does not remove that volume.
 
