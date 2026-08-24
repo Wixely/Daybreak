@@ -8,9 +8,11 @@ Daybreak is a self-hosted household dashboard for recurring activities and one-o
 
 [![Daybreak daily dashboard with seeded household activities, deadlines, urgency states, and completed items](docs/images/dashboard.png)](docs/images/dashboard.png)
 
-| Activity configuration | History and analytics |
+| Household settings and version | History and analytics |
 | --- | --- |
-| [![Daybreak activity configuration screen](docs/images/configuration.png)](docs/images/configuration.png) | [![Daybreak history and analytics screen](docs/images/history.png)](docs/images/history.png) |
+| [![Daybreak household settings screen showing holiday calendar, version, and source link](docs/images/configuration.png)](docs/images/configuration.png) | [![Daybreak history and analytics screen](docs/images/history.png)](docs/images/history.png) |
+
+[![Daybreak holiday schedule explanation and three-day dashboard simulation](docs/images/schedule-simulation.png)](docs/images/schedule-simulation.png)
 
 ## What it does
 
