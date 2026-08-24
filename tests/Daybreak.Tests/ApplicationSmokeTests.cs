@@ -110,8 +110,13 @@ public sealed partial class ApplicationSmokeTests
 
         var pendingSection = dashboardHtml.IndexOf("aria-label=\"Activities to do\"", StringComparison.Ordinal);
         var completedSection = dashboardHtml.IndexOf("aria-label=\"Completed activities\"", StringComparison.Ordinal);
+        var fullscreenHandlerStart = behaviorScript.IndexOf("async function requestDashboardFullscreen()", StringComparison.Ordinal);
+        var fullscreenHandlerEnd = behaviorScript.IndexOf("function disconnectFullscreenButton()", StringComparison.Ordinal);
         Assert.IsGreaterThanOrEqualTo(0, pendingSection);
         Assert.IsGreaterThan(pendingSection, completedSection);
+        Assert.IsTrue(fullscreenHandlerStart >= 0);
+        Assert.IsTrue(fullscreenHandlerEnd > fullscreenHandlerStart);
+        var fullscreenHandler = behaviorScript[fullscreenHandlerStart..fullscreenHandlerEnd];
         Assert.AreEqual(HttpStatusCode.OK, behavior.StatusCode);
         StringAssert.Contains(behaviorScript, "IntersectionObserver");
         StringAssert.Contains(behaviorScript, "is-revealed");
@@ -124,6 +129,8 @@ public sealed partial class ApplicationSmokeTests
         StringAssert.Contains(behaviorScript, "window.self === window.top");
         StringAssert.Contains(behaviorScript, "requestFullscreen");
         StringAssert.Contains(behaviorScript, "fullscreenchange");
+        StringAssert.Contains(fullscreenHandler, "readKeepAwakePreference()");
+        StringAssert.Contains(fullscreenHandler, "void startKeepAwake();");
         StringAssert.Contains(behaviorScript, "navigator.clipboard");
         StringAssert.Contains(behaviorScript, "execCommand(\"copy\")");
     }

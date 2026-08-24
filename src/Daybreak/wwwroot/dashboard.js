@@ -110,6 +110,12 @@ function updateFullscreenButton() {
 }
 
 async function requestDashboardFullscreen() {
+    if (readKeepAwakePreference()) {
+        // Start playback directly inside the fullscreen click gesture. Mobile browsers
+        // may reject the earlier automatic attempt even though the preference is enabled.
+        void startKeepAwake();
+    }
+
     if (!canRequestDashboardFullscreen()) {
         updateFullscreenButton();
         return;
