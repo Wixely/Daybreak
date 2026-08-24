@@ -6,7 +6,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $sourceRoot = Join-Path $repositoryRoot 'src/Daybreak'
-$remoteAssetPattern = '(?i)(?:src|href)\s*=\s*["'']\s*(?:https?:)?//|@import\s+(?:url\()?\s*["'']?\s*(?:https?:)?//|url\(\s*["'']?\s*(?:https?:)?//'
+$remoteAssetPattern = '(?i)<(?:script|img|source|audio|video|iframe)\b[^>]*\b(?:src|srcset)\s*=\s*["'']\s*(?:https?:)?//|<link\b[^>]*\bhref\s*=\s*["'']\s*(?:https?:)?//|@import\s+(?:url\()?\s*["'']?\s*(?:https?:)?//|url\(\s*["'']?\s*(?:https?:)?//'
 
 $browserSourceFiles = Get-ChildItem -LiteralPath $sourceRoot -Recurse -File |
     Where-Object { $_.Extension -in @('.razor', '.html', '.css', '.js') }
