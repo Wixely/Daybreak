@@ -260,7 +260,7 @@ else if (_tab == "one-offs")
                     @foreach (var task in _oneOffTasks)
                     {
                         <button class="list-item @(_oneOff.Id == task.Id ? "selected" : null)" type="button" @onclick="() => EditOneOff(task)">
-                            <span><strong>@task.Title</strong><small>@DateOnly.Parse(task.ScheduledDate).ToString("ddd, d MMM yyyy")</small></span>
+                            <span><strong>@task.Title</strong><small>@DateOnly.Parse(task.ScheduledDate).ToString("ddd, d MMM yyyy")@(task.IsPermanent ? " · Permanent" : string.Empty)</small></span>
                         </button>
                     }
                 </div>
@@ -289,12 +289,19 @@ else if (_tab == "one-offs")
                     {
                         <div class="field"><label for="one-warning">Warning minutes</label><InputNumber id="one-warning" @bind-Value="_oneOff.WarningMinutes" /></div>
                     }
-                    <div class="field"><label for="one-bleed">Bleed override in minutes</label><InputNumber id="one-bleed" @bind-Value="_oneOff.BleedOverrideMinutes" placeholder="Use global" /></div>
+                    @if (!_oneOff.IsPermanent)
+                    {
+                        <div class="field"><label for="one-bleed">Bleed override in minutes</label><InputNumber id="one-bleed" @bind-Value="_oneOff.BleedOverrideMinutes" placeholder="Use global" /></div>
+                    }
                     <div class="field">
                         <label for="one-show-ahead">Show early (hours)</label>
                         <InputNumber id="one-show-ahead" @bind-Value="_oneOff.ShowAheadHours" />
                         <small>0 shows it on the scheduled day; higher values allow completion earlier.</small>
                     </div>
+                    <label class="toggle-field span-2">
+                        <InputCheckbox @bind-Value="_oneOff.IsPermanent" />
+                        <span class="toggle-copy">Keep until completed<small>If unfinished, this task carries onto every following day's board.</small></span>
+                    </label>
                 </div>
                 <ScheduleSimulator Title="@OneOffSimulationTitle"
                                    TimeZoneId="@SimulationTimeZone"
@@ -1080,6 +1087,7 @@ else
         [Range(0, 1440)] public int WarningMinutes { get; set; } = 30;
         [Range(0, 720)] public int? BleedOverrideMinutes { get; set; }
         [Range(0, 168)] public int ShowAheadHours { get; set; }
+        public bool IsPermanent { get; set; }
         public string? CreatedAtUtc { get; set; }
 
         public static OneOffForm Create(DateOnly today) => new() { ScheduledDate = today.ToString("yyyy-MM-dd") };
@@ -1088,12 +1096,12 @@ else
             Id = value.Id, Title = value.Title, Notes = value.Notes, ScheduledDate = value.ScheduledDate,
             DeadlineTime = FormatTime(value.DeadlineMinutes), UrgencyMode = value.UrgencyMode,
             WarningMinutes = value.WarningMinutes, BleedOverrideMinutes = value.BleedOverrideMinutes,
-            ShowAheadHours = value.ShowAheadHours, CreatedAtUtc = value.CreatedAtUtc,
+            ShowAheadHours = value.ShowAheadHours, IsPermanent = value.IsPermanent, CreatedAtUtc = value.CreatedAtUtc,
         };
 
         public OneOffTask ToTask() => new(
             Id ?? string.Empty, Title, Notes, ScheduledDate, ParseTime(DeadlineTime), UrgencyMode, WarningMinutes,
-            BleedOverrideMinutes, ShowAheadHours, null, null, CreatedAtUtc ?? string.Empty, string.Empty);
+            BleedOverrideMinutes, ShowAheadHours, IsPermanent, null, null, CreatedAtUtc ?? string.Empty, string.Empty);
     }
 
     private sealed class SettingsForm

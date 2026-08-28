@@ -11,7 +11,8 @@ public sealed record ScheduleProjectionItem(
     DateTimeOffset? EffectiveDayEnd,
     DateTimeOffset? ActionWindowEnd,
     bool Collides,
-    string AdjustmentExplanation);
+    string AdjustmentExplanation,
+    bool IsPermanent);
 
 public sealed record ScheduleExplanation(
     string Recurrence,
@@ -49,7 +50,8 @@ public sealed class ScheduleProjector
                 activity.BleedOverrideMinutes ?? defaultBleedMinutes,
                 activity.ShowAheadHours,
                 timeZone,
-                AdjustmentExplanation(activity, nominal, effective, holidayDates));
+                AdjustmentExplanation(activity, nominal, effective, holidayDates),
+                false);
         }).ToList();
 
         var collisions = projected
@@ -78,7 +80,8 @@ public sealed class ScheduleProjector
             task.BleedOverrideMinutes ?? defaultBleedMinutes,
             task.ShowAheadHours,
             timeZone,
-            string.Empty);
+            string.Empty,
+            task.IsPermanent);
     }
 
     public ScheduleExplanation Explain(Activity activity, int defaultBleedMinutes) => new(
@@ -89,10 +92,14 @@ public sealed class ScheduleProjector
         UrgencySentence(activity.DeadlineMinutes, activity.UrgencyMode, activity.WarningMinutes));
 
     public ScheduleExplanation Explain(OneOffTask task, int defaultBleedMinutes) => new(
-        $"This task is scheduled once, on {FormatDate(DateOnly.Parse(task.ScheduledDate, CultureInfo.InvariantCulture))}.",
+        task.IsPermanent
+            ? $"This task starts on {FormatDate(DateOnly.Parse(task.ScheduledDate, CultureInfo.InvariantCulture))} and stays on the board until completed."
+            : $"This task is scheduled once, on {FormatDate(DateOnly.Parse(task.ScheduledDate, CultureInfo.InvariantCulture))}.",
         string.Empty,
         ShowEarlySentence(task.ShowAheadHours),
-        BleedSentence(task.BleedOverrideMinutes, defaultBleedMinutes),
+        task.IsPermanent
+            ? "If unfinished, it carries into each following day until completed."
+            : BleedSentence(task.BleedOverrideMinutes, defaultBleedMinutes),
         UrgencySentence(task.DeadlineMinutes, task.UrgencyMode, task.WarningMinutes));
 
     public static DateOnly? AdjustForHoliday(
@@ -151,11 +158,12 @@ public sealed class ScheduleProjector
         int bleedMinutes,
         int showAheadHours,
         TimeZoneInfo timeZone,
-        string adjustmentExplanation)
+        string adjustmentExplanation,
+        bool isPermanent)
     {
         if (effectiveDate is null)
         {
-            return new(nominalDate, null, null, null, null, null, null, false, adjustmentExplanation);
+            return new(nominalDate, null, null, null, null, null, null, false, adjustmentExplanation, isPermanent);
         }
 
         var dayStart = LocalTimeResolver.Resolve(effectiveDate.Value, TimeOnly.MinValue, timeZone);
@@ -178,7 +186,8 @@ public sealed class ScheduleProjector
             dayEnd,
             dayEnd.AddMinutes(bleedMinutes),
             false,
-            adjustmentExplanation);
+            adjustmentExplanation,
+            isPermanent);
     }
 
     private static string RecurrenceSentence(Activity activity)

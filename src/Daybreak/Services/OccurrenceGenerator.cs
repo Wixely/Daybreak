@@ -45,8 +45,12 @@ public sealed class OccurrenceGenerator(
               AND (EndDate IS NULL OR EndDate >= @From)
             """, new { From = Format(from), Through = Format(through) })).AsList();
         var oneOffTasks = (await connection.QueryAsync<OneOffTask>("""
-            SELECT * FROM OneOffTasks WHERE ScheduledDate BETWEEN @From AND @Through
-            """, new { From = Format(from), Through = Format(through) })).AsList();
+            SELECT * FROM OneOffTasks task
+            WHERE task.ScheduledDate BETWEEN @From AND @Through
+               OR (task.IsPermanent = 1 AND task.ScheduledDate <= @Through AND NOT EXISTS (
+                    SELECT 1 FROM Occurrences occurrence
+                    WHERE occurrence.OneOffTaskId = task.Id AND occurrence.State != @Pending))
+            """, new { From = Format(from), Through = Format(through), Pending = OccurrenceState.Pending })).AsList();
         var timeZone = TimeZoneInfo.FindSystemTimeZoneById(settings.TimeZoneId);
         var createdAt = clock.GetUtcNow().ToString("O");
         var holidayDates = await LoadHolidaysAsync(settings, activities, from, through, cancellationToken);
@@ -167,10 +171,10 @@ public sealed class OccurrenceGenerator(
         return await connection.ExecuteAsync("""
             INSERT INTO Occurrences (
                 Id, OneOffTaskId, TitleSnapshot, NotesSnapshot, ScheduleLabelSnapshot, NominalDate, EffectiveDate, AdjustmentDescriptionSnapshot,
-                VisibleFromUtc, DeadlineUtc, ActionWindowEndUtc, UrgencyMode, WarningMinutes, State, Version, CreatedAtUtc)
+                VisibleFromUtc, DeadlineUtc, ActionWindowEndUtc, UrgencyMode, WarningMinutes, State, Version, IsPermanent, CreatedAtUtc)
             VALUES (
                 @Id, @OneOffTaskId, @Title, @Notes, @ScheduleLabel, @NominalDate, @EffectiveDate, NULL,
-                @VisibleFromUtc, @DeadlineUtc, @ActionWindowEndUtc, @UrgencyMode, @WarningMinutes, 0, 0, @CreatedAtUtc)
+                @VisibleFromUtc, @DeadlineUtc, @ActionWindowEndUtc, @UrgencyMode, @WarningMinutes, 0, 0, @IsPermanent, @CreatedAtUtc)
             ON CONFLICT(OneOffTaskId) WHERE OneOffTaskId IS NOT NULL DO UPDATE SET
                 TitleSnapshot = excluded.TitleSnapshot,
                 NotesSnapshot = excluded.NotesSnapshot,
@@ -181,7 +185,8 @@ public sealed class OccurrenceGenerator(
                 DeadlineUtc = excluded.DeadlineUtc,
                 ActionWindowEndUtc = excluded.ActionWindowEndUtc,
                 UrgencyMode = excluded.UrgencyMode,
-                WarningMinutes = excluded.WarningMinutes
+                WarningMinutes = excluded.WarningMinutes,
+                IsPermanent = excluded.IsPermanent
             WHERE Occurrences.State = 0 AND (
                 Occurrences.TitleSnapshot IS NOT excluded.TitleSnapshot OR
                 Occurrences.NotesSnapshot IS NOT excluded.NotesSnapshot OR
@@ -192,14 +197,15 @@ public sealed class OccurrenceGenerator(
                 Occurrences.DeadlineUtc IS NOT excluded.DeadlineUtc OR
                 Occurrences.ActionWindowEndUtc IS NOT excluded.ActionWindowEndUtc OR
                 Occurrences.UrgencyMode IS NOT excluded.UrgencyMode OR
-                Occurrences.WarningMinutes IS NOT excluded.WarningMinutes);
+                Occurrences.WarningMinutes IS NOT excluded.WarningMinutes OR
+                Occurrences.IsPermanent IS NOT excluded.IsPermanent);
             """, new
         {
             Id = Guid.NewGuid().ToString("N"),
             OneOffTaskId = task.Id,
             task.Title,
             task.Notes,
-            ScheduleLabel = RecurrenceDescription.OneOff,
+            ScheduleLabel = task.IsPermanent ? RecurrenceDescription.PermanentOneOff : RecurrenceDescription.OneOff,
             NominalDate = Format(projection.NominalDate),
             EffectiveDate = Format(projection.EffectiveDate!.Value),
             VisibleFromUtc = projection.VisibleFrom!.Value.ToString("O"),
@@ -207,6 +213,7 @@ public sealed class OccurrenceGenerator(
             ActionWindowEndUtc = projection.ActionWindowEnd!.Value.ToString("O"),
             task.UrgencyMode,
             task.WarningMinutes,
+            task.IsPermanent,
             CreatedAtUtc = createdAt,
         }, transaction);
     }

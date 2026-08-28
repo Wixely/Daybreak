@@ -88,6 +88,7 @@ public sealed record OneOffTask(
     int WarningMinutes,
     int? BleedOverrideMinutes,
     int ShowAheadHours,
+    bool IsPermanent,
     string? SourceKind,
     string? SourceReference,
     string CreatedAtUtc,
@@ -95,7 +96,7 @@ public sealed record OneOffTask(
 {
     public OneOffTask() : this(
         string.Empty, string.Empty, null, string.Empty, null, UrgencyMode.None, 30,
-        null, 0, null, null, string.Empty, string.Empty)
+        null, 0, false, null, null, string.Empty, string.Empty)
     { }
 }
 
@@ -118,12 +119,13 @@ public sealed record Occurrence(
     string? CompletedAtUtc,
     string? CompletedBy,
     long Version,
+    bool IsPermanent,
     string CreatedAtUtc)
 {
     public Occurrence() : this(
         string.Empty, null, null, string.Empty, null, string.Empty, string.Empty, string.Empty,
         null, null, null, string.Empty, UrgencyMode.None, 30, OccurrenceState.Pending,
-        null, null, 0, string.Empty)
+        null, null, 0, false, string.Empty)
     { }
 }
 

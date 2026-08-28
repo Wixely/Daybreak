@@ -39,10 +39,10 @@ public sealed class OneOffTaskService(
         await connection.ExecuteAsync("""
             INSERT INTO OneOffTasks (
                 Id, Title, Notes, ScheduledDate, DeadlineMinutes, UrgencyMode, WarningMinutes,
-                BleedOverrideMinutes, ShowAheadHours, SourceKind, SourceReference, CreatedAtUtc, UpdatedAtUtc)
+                BleedOverrideMinutes, ShowAheadHours, IsPermanent, SourceKind, SourceReference, CreatedAtUtc, UpdatedAtUtc)
             VALUES (
                 @Id, @Title, @Notes, @ScheduledDate, @DeadlineMinutes, @UrgencyMode, @WarningMinutes,
-                @BleedOverrideMinutes, @ShowAheadHours, @SourceKind, @SourceReference, @CreatedAtUtc, @UpdatedAtUtc)
+                @BleedOverrideMinutes, @ShowAheadHours, @IsPermanent, @SourceKind, @SourceReference, @CreatedAtUtc, @UpdatedAtUtc)
             ON CONFLICT(Id) DO UPDATE SET
                 Title = excluded.Title,
                 Notes = excluded.Notes,
@@ -52,6 +52,7 @@ public sealed class OneOffTaskService(
                 WarningMinutes = excluded.WarningMinutes,
                 BleedOverrideMinutes = excluded.BleedOverrideMinutes,
                 ShowAheadHours = excluded.ShowAheadHours,
+                IsPermanent = excluded.IsPermanent,
                 SourceKind = excluded.SourceKind,
                 SourceReference = excluded.SourceReference,
                 UpdatedAtUtc = excluded.UpdatedAtUtc;
@@ -66,6 +67,7 @@ public sealed class OneOffTaskService(
             task.WarningMinutes,
             task.BleedOverrideMinutes,
             task.ShowAheadHours,
+            task.IsPermanent,
             task.SourceKind,
             task.SourceReference,
             CreatedAtUtc = string.IsNullOrWhiteSpace(task.CreatedAtUtc) ? now : task.CreatedAtUtc,

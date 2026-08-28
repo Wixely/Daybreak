@@ -20,15 +20,22 @@ public sealed class BoardService(
         var timeZone = TimeZoneInfo.FindSystemTimeZoneById(settings.TimeZoneId);
         var today = LocalTimeResolver.Today(clock, timeZone);
         var now = clock.GetUtcNow();
+        var todayStart = LocalTimeResolver.Resolve(today, TimeOnly.MinValue, timeZone);
         var occurrences = await connection.QueryAsync<Occurrence>("""
             SELECT * FROM Occurrences
             WHERE State != @Expired
               AND (VisibleFromUtc IS NULL OR VisibleFromUtc <= @Now)
-              AND ActionWindowEndUtc > @Now
+              AND (
+                  ActionWindowEndUtc > @Now
+                  OR (IsPermanent = 1 AND State = @Pending)
+                  OR (IsPermanent = 1 AND State = @Completed AND CompletedAtUtc >= @TodayStart))
             """, new
         {
             Expired = OccurrenceState.Expired,
+            Pending = OccurrenceState.Pending,
+            Completed = OccurrenceState.Completed,
             Now = now.ToString("O"),
+            TodayStart = todayStart.ToString("O"),
         });
 
         var items = occurrences
@@ -61,7 +68,7 @@ public sealed class BoardService(
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
         var ids = (await connection.QueryAsync<string>("""
             SELECT Id FROM Occurrences
-            WHERE State = @Pending AND ActionWindowEndUtc <= @Now
+            WHERE State = @Pending AND IsPermanent = 0 AND ActionWindowEndUtc <= @Now
             """, new { Pending = OccurrenceState.Pending, Now = now }, transaction)).AsList();
         if (ids.Count == 0)
         {
@@ -102,6 +109,11 @@ public sealed class BoardService(
         var now = clock.GetUtcNow();
         await using var connection = await connections.OpenAsync(cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        var settings = await connection.QuerySingleAsync<HouseholdSettings>(
+            "SELECT * FROM HouseholdSettings WHERE Id = 1", transaction: transaction);
+        var timeZone = TimeZoneInfo.FindSystemTimeZoneById(settings.TimeZoneId);
+        var today = LocalTimeResolver.Today(clock, timeZone);
+        var todayStart = LocalTimeResolver.Resolve(today, TimeOnly.MinValue, timeZone).ToString("O");
         var affected = await connection.ExecuteAsync("""
             UPDATE Occurrences
             SET State = @To,
@@ -112,14 +124,19 @@ public sealed class BoardService(
               AND State = @From
               AND Version = @ExpectedVersion
               AND (VisibleFromUtc IS NULL OR VisibleFromUtc <= @Now)
-              AND ActionWindowEndUtc > @Now;
+              AND (
+                  ActionWindowEndUtc > @Now
+                  OR (IsPermanent = 1 AND @From = @Pending)
+                  OR (IsPermanent = 1 AND @From = @Completed AND CompletedAtUtc >= @TodayStart));
             """, new
         {
             Id = id,
             From = from,
             To = to,
             Completed = OccurrenceState.Completed,
+            Pending = OccurrenceState.Pending,
             Now = now.ToString("O"),
+            TodayStart = todayStart,
             ExpectedVersion = expectedVersion,
         }, transaction);
 

@@ -92,6 +92,7 @@ The activity editor previews the next occurrences before saving.
 
 - One-off tasks are included in the MVP.
 - A one-off task has a scheduled local date and the same optional notes, deadline, urgency, and midnight-bleed behaviour as a recurring occurrence.
+- A one-off task can be permanent, in which case it remains pending on each following day's board until completed instead of expiring after its bleed window.
 - It completes or expires exactly once and remains in history.
 - The model reserves source metadata for a future calendar-import feature, but calendar import is not part of the MVP.
 

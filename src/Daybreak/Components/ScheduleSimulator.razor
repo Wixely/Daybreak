@@ -123,7 +123,7 @@
                 {
                     <span>@StateAt(item)</span>
                     <strong>@Title</strong>
-                    <small>Occurrence from @item.NominalDate.ToString("ddd d MMM"); action window ends @FormatInstant(item.ActionWindowEnd!.Value).</small>
+                    <small>@CardTiming(item)</small>
                 }
             </div>
         }
@@ -171,7 +171,7 @@
     private IReadOnlyList<ScheduleProjectionItem> TimelineItems => Items
         .Where(item => item.EffectiveDate is null
             ? item.NominalDate >= _windowStart && item.NominalDate < _windowStart.AddDays(3)
-            : item.VisibleFrom < WindowEnd && item.ActionWindowEnd > WindowStart)
+            : item.VisibleFrom < WindowEnd && (item.IsPermanent || item.ActionWindowEnd > WindowStart))
         .OrderBy(item => item.VisibleFrom ?? DateTimeOffset.MaxValue)
         .ThenBy(item => item.NominalDate)
         .ToList();
@@ -185,7 +185,7 @@
     }).ToList();
 
     private IReadOnlyList<ScheduleProjectionItem> CurrentItems => TimelineItems
-        .Where(item => item.VisibleFrom <= SimulatedNow && item.ActionWindowEnd > SimulatedNow)
+        .Where(item => item.VisibleFrom <= SimulatedNow && (item.IsPermanent || item.ActionWindowEnd > SimulatedNow))
         .OrderByDescending(item => item.NominalDate)
         .ToList();
 
@@ -198,7 +198,7 @@
                 .SelectMany(item => new[]
                 {
                     new VisibilityEvent(Max(item.VisibleFrom!.Value, WindowStart), 1),
-                    new VisibilityEvent(Min(item.ActionWindowEnd!.Value, WindowEnd), -1),
+                    new VisibilityEvent(item.IsPermanent ? WindowEnd : Min(item.ActionWindowEnd!.Value, WindowEnd), -1),
                 })
                 .OrderBy(item => item.At)
                 .ThenBy(item => item.Change)
@@ -216,6 +216,7 @@
 
     private string StateAt(ScheduleProjectionItem item)
     {
+        if (item.IsPermanent && item.EffectiveDayEnd <= SimulatedNow) return "From earlier day · carried";
         if (item.EffectiveDayEnd <= SimulatedNow) return "From yesterday · bleed";
         if (item.Deadline <= SimulatedNow) return item.UrgentFrom is null ? "Past deadline" : "Urgent · overdue";
         if (item.UrgentFrom <= SimulatedNow) return "Urgent · due soon";
@@ -226,6 +227,7 @@
     {
         var state when state.Contains("Urgent", StringComparison.Ordinal) => "urgent",
         var state when state.Contains("Past deadline", StringComparison.Ordinal) => "overdue",
+        var state when state.Contains("carried", StringComparison.Ordinal) => "bleed",
         var state when state.Contains("bleed", StringComparison.Ordinal) => "bleed",
         var state when state.StartsWith("Available", StringComparison.Ordinal) => "available",
         _ => "hidden",
@@ -264,7 +266,11 @@
                 yield return new(Max(deadline, visibleFrom), dayEnd, "overdue", "Past deadline");
             }
         }
-        if (item.ActionWindowEnd > item.EffectiveDayEnd)
+        if (item.IsPermanent)
+        {
+            yield return new(item.EffectiveDayEnd.Value, WindowEnd, "bleed", "Carried until completed");
+        }
+        else if (item.ActionWindowEnd > item.EffectiveDayEnd)
         {
             yield return new(item.EffectiveDayEnd.Value, item.ActionWindowEnd.Value, "bleed", "Bleed after midnight");
         }
@@ -292,7 +298,11 @@
         $"Visible {FormatInstant(item.VisibleFrom!.Value)} · " +
         (item.UrgentFrom is null ? "No urgency start · " : $"Urgent {FormatInstant(item.UrgentFrom.Value)} · ") +
         (item.Deadline is null ? "No deadline · " : $"Deadline {FormatInstant(item.Deadline.Value)} · ") +
-        $"Ends {FormatInstant(item.ActionWindowEnd!.Value)}";
+        (item.IsPermanent ? "Stays until completed" : $"Ends {FormatInstant(item.ActionWindowEnd!.Value)}");
+
+    private string CardTiming(ScheduleProjectionItem item) => item.IsPermanent
+        ? $"Task from {item.NominalDate:ddd d MMM}; remains until completed."
+        : $"Occurrence from {item.NominalDate:ddd d MMM}; action window ends {FormatInstant(item.ActionWindowEnd!.Value)}.";
 
     private string OccurrenceLabel(ScheduleProjectionItem item) => item.EffectiveDate switch
     {

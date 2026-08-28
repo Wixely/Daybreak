@@ -104,6 +104,7 @@ public sealed class AgentOperations(
             request.WarningMinutes,
             request.BleedOverrideMinutes,
             request.ShowAheadHours,
+            request.IsPermanent,
             existing?.SourceKind,
             existing?.SourceReference,
             existing?.CreatedAtUtc ?? string.Empty,

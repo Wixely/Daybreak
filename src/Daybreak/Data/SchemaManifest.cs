@@ -4,7 +4,7 @@ public sealed record DatabaseMigration(int Version, string Name, string Sql);
 
 public static class SchemaManifest
 {
-    public const int CurrentVersion = 5;
+    public const int CurrentVersion = 6;
 
     public static IReadOnlyList<DatabaseMigration> Migrations { get; } =
     [
@@ -178,6 +178,13 @@ public static class SchemaManifest
             SET AdjustmentDescriptionSnapshot =
                 'This occurrence moved from ' || NominalDate || ' to ' || EffectiveDate || ' under its holiday rule.'
             WHERE NominalDate <> EffectiveDate;
+            """),
+        new(6, "Permanent one-off tasks", """
+            ALTER TABLE OneOffTasks
+            ADD COLUMN IsPermanent INTEGER NOT NULL DEFAULT 0 CHECK (IsPermanent IN (0, 1));
+
+            ALTER TABLE Occurrences
+            ADD COLUMN IsPermanent INTEGER NOT NULL DEFAULT 0 CHECK (IsPermanent IN (0, 1));
             """),
     ];
 }

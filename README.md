@@ -17,7 +17,7 @@ Daybreak is a self-hosted household dashboard for recurring activities and one-o
 ## What it does
 
 - Generates today's board from daily, weekday, interval, and monthly schedules.
-- Adds dated one-off tasks alongside recurring activities.
+- Adds dated one-off tasks alongside recurring activities, including permanent tasks that carry forward until completed.
 - Sorts unfinished work by overdue state and deadline.
 - Provides optional due-soon and overdue pulsing, with a static reduced-motion alternative.
 - Keeps near-midnight work available during a configurable bleed window.

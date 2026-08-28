@@ -3,6 +3,7 @@ namespace Daybreak.Domain;
 public static class RecurrenceDescription
 {
     public const string OneOff = "One-off";
+    public const string PermanentOneOff = "Permanent one-off";
 
     public static string ForActivity(Activity activity) => activity.RecurrenceKind switch
     {

@@ -93,6 +93,28 @@ public sealed class BoardIntegrationTests
     }
 
     [TestMethod]
+    public async Task PermanentOneOffCarriesUntilCompleted()
+    {
+        var oneOffTasks = new OneOffTaskService(_connections, _changes, _clock);
+        var generator = new OccurrenceGenerator(_connections, new EmptyHolidayProvider(), _changes, _clock);
+        var board = new BoardService(_connections, generator, _changes, _clock);
+        await oneOffTasks.SaveAsync(CreateOneOff("Carry me", null) with { IsPermanent = true });
+
+        _clock.SetUtcNow(new DateTimeOffset(2026, 8, 20, 7, 0, 0, TimeSpan.Zero));
+        Assert.AreEqual(0, await board.ExpireAsync());
+        var carried = (await board.GetSnapshotAsync()).Items.Single();
+        Assert.AreEqual(new DateOnly(2026, 8, 19), carried.EffectiveDate);
+        Assert.AreEqual("Permanent one-off", carried.ScheduleLabel);
+        Assert.IsTrue(carried.IsCarried(new DateOnly(2026, 8, 20)));
+
+        Assert.IsTrue(await board.CompleteAsync(carried.Id, carried.Version));
+        Assert.AreEqual(OccurrenceState.Completed, (await board.GetSnapshotAsync()).Items.Single().State);
+
+        _clock.SetUtcNow(new DateTimeOffset(2026, 8, 21, 0, 0, 0, TimeSpan.Zero));
+        Assert.HasCount(0, (await board.GetSnapshotAsync()).Items);
+    }
+
+    [TestMethod]
     public async Task ShowAheadMakesTomorrowActivityActionableOnPreviousDay()
     {
         var activities = new ActivityService(_connections, _changes, _clock);
@@ -215,7 +237,7 @@ public sealed class BoardIntegrationTests
         var board = new BoardService(_connections, generator, _changes, _clock);
         var id = await oneOffTasks.SaveAsync(new OneOffTask(
             string.Empty, "One-time job", null, "2026-08-19", null, UrgencyMode.None,
-            30, null, 0, null, null, string.Empty, string.Empty));
+            30, null, 0, false, null, null, string.Empty, string.Empty));
 
         var created = await board.GetSnapshotAsync();
         Assert.AreEqual("One-time job", created.Items.Single().Title);
@@ -349,7 +371,7 @@ public sealed class BoardIntegrationTests
 
     private static OneOffTask CreateOneOff(string title, int? deadlineMinutes) => new(
         string.Empty, title, null, "2026-08-19", deadlineMinutes, UrgencyMode.None,
-        30, null, 0, null, null, string.Empty, string.Empty);
+        30, null, 0, false, null, null, string.Empty, string.Empty);
 
     private sealed class EmptyHolidayProvider : IHolidayProvider
     {

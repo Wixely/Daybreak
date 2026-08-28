@@ -161,6 +161,7 @@ public sealed class DemoDataSeeder(
             warningMinutes,
             null,
             showAheadHours,
+            false,
             "Demo",
             null,
             string.Empty,

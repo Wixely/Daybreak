@@ -41,6 +41,8 @@ The v1 endpoints are:
 | `POST` | `/api/v1/one-off-tasks` | Create a one-off task |
 | `PUT` | `/api/v1/one-off-tasks/{id}` | Replace an editable one-off task |
 | `DELETE` | `/api/v1/one-off-tasks/{id}` | Delete an editable pending one-off task |
+
+One-off task write requests accept `isPermanent`. When true, an unfinished task carries forward on the board until it is completed.
 | `GET` | `/api/v1/settings` | Read household scheduling settings |
 | `PUT` | `/api/v1/settings` | Update household scheduling settings |
 | `GET` | `/api/v1/history?recentLimit=100` | Read history and summaries; limit is clamped to 1–500 |

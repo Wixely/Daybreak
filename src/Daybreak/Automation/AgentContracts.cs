@@ -30,7 +30,8 @@ public sealed record OneOffTaskWriteRequest(
     UrgencyMode UrgencyMode,
     int WarningMinutes,
     int? BleedOverrideMinutes,
-    int ShowAheadHours);
+    int ShowAheadHours,
+    bool IsPermanent);
 
 public sealed record HouseholdSettingsWriteRequest(
     string TimeZoneId,
