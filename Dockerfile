@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM mcr.microsoft.com/dotnet/sdk:10.0.400 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0.403 AS build
 ARG VERSION
 WORKDIR /source
 
@@ -20,7 +20,7 @@ RUN dotnet publish src/Daybreak/Daybreak.csproj \
     /p:UseAppHost=false \
     ${VERSION:+/p:DaybreakVersion=$VERSION}
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0.11 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.14 AS runtime
 WORKDIR /app
 ENV ASPNETCORE_HTTP_PORTS=8080 \
     ASPNETCORE_ENVIRONMENT=Production \
